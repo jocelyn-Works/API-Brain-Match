@@ -6,6 +6,7 @@ const app = express();
 
 // routes
 app.use("/api/user", userRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // server
 app.listen(process.env.PORT, () => {
