@@ -2,8 +2,13 @@ const router = require('express').Router();
 const authController = require('../controllers/auth.controller.js');
 
 // authentification 
-router.get("/register", authController.signUp);
 
+// inscription
+router.post("/register", authController.signUp);
+
+
+// login 
+router.post("/login", authController.signIn);
 
 
 module.exports = router;
