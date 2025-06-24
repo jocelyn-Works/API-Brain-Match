@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
-const { isEmail } = require('validator');
-const bcrypt = require('bcrypt');
+const mongoose = require("mongoose");
+const { isEmail } = require("validator");
+const bcrypt = require("bcrypt");
 
 const userSchema = new mongoose.Schema(
   {
@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
       maxLength: 55,
       unique: true,
       trim: true, // suprime les espace
-      index: true
+      index: true,
     },
     email: {
       type: String,
@@ -20,48 +20,50 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       unique: true,
       trim: true,
-      index: true
+      index: true,
     },
     password: {
       type: String,
       required: true,
       max: 1024,
-      minlength: 6
+      minlength: 6,
     },
     picture: {
       type: String,
-      default: "./uploads/profil/random-user.png"
+      default: "./uploads/profil/random-user.png",
     },
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     score: {
       type: Number,
-      default: 0
+      default: 0,
     },
   },
   {
-    timestamps: true,  // createdAt / UpdtedAt
+    timestamps: true, // createdAt / UpdtedAt
   }
 );
 
 // hashage du mot de passe avant entrer en BDD
-userSchema.pre("save", async function(next) {
-  if (!this.isModified('password')) return next();
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt();
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-userSchema.statics.login = async function(email, password) {
+userSchema.statics.login = async function (email, password) {
   const user = await this.findOne({ email });
   if (user) {
     const auth = await bcrypt.compare(password, user.password);
     if (auth) {
       return user;
     }
-    throw Error('Mot de Passe Incorecte');
+    throw Error("Mot de Passe Incorecte");
   }
-  throw Error('Email Incorecte')
+  throw Error("Email Incorecte");
 };
-                               // user = nom de la table 
+// user = nom de la table
 const UserModel = mongoose.model("user", userSchema);
 
 module.exports = UserModel;

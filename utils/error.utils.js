@@ -1,7 +1,7 @@
 module.exports.signUpErrors = (err) => {
   let errors = { pseudo: "", email: "", password: "" };
 
-  if (err.message.includes("pseudo"))
+  if (err.message.includes("username"))
     errors.pseudo = "Pseudo incorrect ou déjà pris";
 
   if (err.message.includes("email")) errors.email = "Email incorrect";

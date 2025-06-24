@@ -27,29 +27,19 @@ module.exports.signUp = async (req, res) => {
 
 // Connexion
 module.exports.signIn = async (req, res) => {
-    const { identifier, password } = req.body;
+    const { email, password} =req.body
 
     try {
-        // Vérifiez si l'identifiant est un email ou un nom d'utilisateur
-        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-
-        let user;
-        if (isEmail) {
-            // connexion par email
-            user = await UserModel.loginWithEmail(identifier, password);
-        } else {
-            // nom d'utilisateur
-            user = await UserModel.loginWithUsername(identifier, password);
-        }
-
+        const user = await UserModel.login(email, password);
         const token = createToken(user._id);
-        res.cookie('jwt', token, { httpOnly: true, maxAge });
-        res.status(200).json({ user: user._id });
+        res.cookie('jwt', token, { httpOnly: true, maxAge});
+        res.status(200).json({ user: user._id})
     } catch (err) {
         const errors = signInErrors(err);
         res.status(200).json({ errors });
     }
-};
+
+}
 
 // Deconnexion
 module.exports.logout = (req, res) => {

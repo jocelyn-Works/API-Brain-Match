@@ -11,9 +11,10 @@ pids/
 *.seed
 
 # Environment files
-.env
-.env.test
-.env*.local
+**/*.env*
+*.env
+*.env.test
+*.env*.local
 
 # Testing
 coverage/
