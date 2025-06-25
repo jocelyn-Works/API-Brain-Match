@@ -22,7 +22,7 @@ const questionSchema = new Schema({
   }
 });
 
-//  catégories
+//  catégories => questions
 const categorySchema = new Schema({
   theme: {
     type: String,
@@ -32,7 +32,7 @@ const categorySchema = new Schema({
   },
   logo: {
     type: String,
-    required: true
+    required: false
   },
   description: {
     type: String,
@@ -41,7 +41,7 @@ const categorySchema = new Schema({
   },
   image: {
     type: String,
-    required: true
+    required: false
   },
   questions: [questionSchema] // Tableau de questions 
 });

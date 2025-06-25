@@ -32,11 +32,13 @@ module.exports.signInErrors = (err) => {
 module.exports.uploadErrors = (err) => {
   let errors = { format: "", maxSize: "" };
 
-  if (err.message.includes("invalide file"))
-    errors.maxSize = "Le fichier dépasse 500ko";
+  if (err.message.includes("invalide file")) {
+    errors.format = "Format de fichier non autorisé. Formats acceptés : jpg, jpeg, png, webp.";
+  }
 
-  if (err.message.includes("max size"))
-    errors.maxSize = "Le fichier dépasse 500ko";
+  if (err.message.includes("max size")) {
+    errors.maxSize = "Le fichier dépasse 500ko.";
+  }
 
   return errors;
 };

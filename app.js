@@ -1,12 +1,21 @@
 const express = require("express");
 const mongoose = require('mongoose');
+const path = require('path');
+
+
+
+const http = require('http');
+const socketIo = require('socket.io');
 
 require("dotenv").config({ path: "./config/.env" });
 const userRoutes = require("./routes/user.routes");
+const quizRoutes = require("./routes/quiz.route")
 
-
+const {checkUser, requireAuth} = require('./middleware/auth.middleware');
 
 const app = express();
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 
@@ -25,9 +34,15 @@ app.get("/", (req, res) => {
   res.json("hello api !!!");
 });
 
+// jwt 
+// app.get("*", checkUser);
+// app.get("/jwtid", requireAuth, (req, res) => {
+//   res.status(200).send(res.locals.user._id)
+// });
+
 // routes
 app.use("/api/user", userRoutes);
-//app.use("/api/quiz", quizRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // server
 app.listen(process.env.PORT, () => {

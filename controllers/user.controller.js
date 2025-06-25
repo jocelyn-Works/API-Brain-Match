@@ -3,8 +3,22 @@ const ObjectID = require("mongoose").Types.ObjectId;
 
 // all users
 module.exports.getAllUsers = async (req, res) => {
-  const users = await UserModel.find().select("-password");
-  res.status(200).json(users);
+  try {
+    const users = await UserModel.find().select("-password");
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`; 
+
+    const usersWithFullPictureUrl = users.map(user => {
+      return {
+        ...user._doc,
+        picture: user.picture ? `${baseUrl}/${user.picture.replace(/^\.?\/*/, '')}` : null
+      };
+    });
+
+    res.status(200).json(usersWithFullPictureUrl);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 
