@@ -22,30 +22,34 @@ const questionSchema = new Schema({
   }
 });
 
-//  catégories
-const categorySchema = new Schema({
-  theme: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  logo: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  image: {
-    type: String,
-    required: true
-  },
-  questions: [questionSchema] // Tableau de questions 
-});
+const Question = mongoose.model('Question', questionSchema);
 
-const Category = mongoose.model('Category', categorySchema);
+module.exports = Question;
 
-module.exports = Category;
+// //  catégories
+// const categorySchema = new Schema({
+//   theme: {
+//     type: String,
+//     required: true,
+//     unique: true,
+//     trim: true
+//   },
+//   logo: {
+//     type: String,
+//     required: true
+//   },
+//   description: {
+//     type: String,
+//     required: true,
+//     trim: true
+//   },
+//   image: {
+//     type: String,
+//     required: true
+//   },
+//   questions: [questionSchema] // Tableau de questions
+// });
+//
+// const Category = mongoose.model('Category', categorySchema);
+//
+// module.exports = Category;
