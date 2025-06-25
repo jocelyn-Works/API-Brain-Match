@@ -1,54 +1,100 @@
 const Category = require("../models/quiz.model");
 const ObjectID = require("mongoose").Types.ObjectId;
+const { uploadImage } = require("../service/upload.service");
+
 
 module.exports.newCategory = async (req, res) => {
-  const { theme, logo, description, image } = req.body;
   try {
+    const { theme, description } = req.body;
+
+    if (!req.files || !req.files.logo || !req.files.image) {
+      return res.status(400).json({ message: "Logo et image sont requis." });
+    }
+
+    const logoFile = req.files.logo[0];
+    const imageFile = req.files.image[0];
+
+    // Uploader le logo (ex: dossier 'categories/logo')
+    const logoPath = await uploadImage(
+      logoFile.buffer,
+      logoFile.mimetype,
+      "category/logo",
+      `logo_${Date.now()}.${logoFile.mimetype.split('/')[1]}`
+    );
+
+    // Upload de l'image (ex: dossier 'categories/image')
+    const imagePath = await uploadImage(
+      imageFile.buffer,
+      imageFile.mimetype,
+      "category/image",
+      `image_${Date.now()}.${imageFile.mimetype.split('/')[1]}`
+    );
+
+    // Créer la catégorie en stockant les chemins vers logo et image
     const newCategory = new Category({
       theme,
       description,
+      logo: logoPath,
+      image: imagePath,
     });
 
     await newCategory.save();
+
     return res.status(200).json(newCategory);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
 
+
 module.exports.newQuizz = async (req, res) => {
   try {
     const { categoryId, questions } = req.body;
+    const parsedQuestions = JSON.parse(questions); // parse le tableau JSON
+
+    const imageFiles = req.files?.image || [];
+
+    if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
+      return res.status(400).json({ message: "Aucune question reçue." });
+    }
+
+    if (imageFiles.length !== parsedQuestions.length) {
+      return res.status(400).json({
+        message: "Le nombre d'images ne correspond pas au nombre de questions.",
+      });
+    }
 
     const category = await Category.findById(categoryId);
-
     if (!category) {
-      return res.status(404).json({ message: "Category non trouvée" });
+      return res.status(404).json({ message: "Catégorie non trouvée." });
     }
 
-    if (!Array.isArray(questions) || questions.length === 0) {
-      return res.status(400).json({ message: "Aucune question fournie" });
-    }
+    // Pour chaque question + image associée
+    for (let i = 0; i < parsedQuestions.length; i++) {
+      const q = parsedQuestions[i];
+      const img = imageFiles[i];
 
-    // Ajout direct de chaque question dans la catégorie
-    for (const q of questions) {
-      const { question, options, answer } = q;
+      const ext = img.mimetype.split("/")[1];
+      const fileName = `question_${Date.now()}_${i}.${ext}`;
 
-      if (!question || !Array.isArray(options) || !answer) {
-        return res.status(400).json({ message: "Une des questions est incomplète" });
-      }
+      const imagePath = await uploadImage(img.buffer, img.mimetype, "quizz", fileName);
 
-      category.questions.push({ question, options, answer });
+      const newQuestion = {
+        question: q.question,
+        options: q.options,
+        answer: q.answer,
+        image: imagePath,
+      };
+
+      category.questions.push(newQuestion);
     }
 
     await category.save();
 
-    res
-      .status(201)
-      .json({ message: `${questions.length} question(s) ajoutée(s) avec succès.`, category });
+    return res.status(201).json({ message: "Questions ajoutées avec succès.", category });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Erreur serveur" });
+    console.error("Erreur:", err.message);
+    return res.status(500).json({ message: err.message });
   }
 };
 

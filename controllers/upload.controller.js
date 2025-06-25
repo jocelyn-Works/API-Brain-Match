@@ -1,5 +1,6 @@
 const { uploadImage } = require("../service/upload.service");
 const { uploadErrors } = require("../utils/error.utils");
+const UserModel = require("../models/user.model")
 
 module.exports.uploadProfil = async (req, res) => {
   try {
@@ -29,8 +30,8 @@ module.exports.uploadProfil = async (req, res) => {
 
     res.send(updatedUser);
   } catch (err) {
-    console.error("Raw upload error:", err.message);
+  console.error("Raw upload error:", err);
   const errors = uploadErrors(err);
-  return res.status(400).json({ errors });
-  }
+  return res.status(400).json({ errors, rawMessage: err.message, rawError: err });
+}
 };
