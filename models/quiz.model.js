@@ -22,6 +22,15 @@ const questionSchema = new Schema({
   }
 });
 
+const subThemeSchema = new Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  questions: [questionSchema] // Tableau de questions 
+});
+
 //  catégories => questions
 const categorySchema = new Schema({
   theme: {
@@ -43,7 +52,7 @@ const categorySchema = new Schema({
     type: String,
     required: false
   },
-  questions: [questionSchema] // Tableau de questions 
+   subThemes: [subThemeSchema] 
 });
 
 const Category = mongoose.model('Category', categorySchema);

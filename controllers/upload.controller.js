@@ -1,6 +1,10 @@
 const { uploadImage } = require("../service/upload.service");
 const { uploadErrors } = require("../utils/error.utils");
-const UserModel = require("../models/user.model")
+
+const path = require("path");
+const fs = require("fs/promises");
+
+const UserModel = require("../models/user.model");
 
 module.exports.uploadProfil = async (req, res) => {
   try {
@@ -10,8 +14,12 @@ module.exports.uploadProfil = async (req, res) => {
     // Supprime ancienne image si existante
     const user = await UserModel.findById(userId);
     if (user?.picture) {
-      const oldFilePath = path.join(__dirname, '..', user.picture);
-      await fs.unlink(oldFilePath).catch(() => {}); // ignore si le fichier n'existe pas
+      const oldFilePath = path.join(__dirname, "..", user.picture);
+      await fs.unlink(oldFilePath).catch((err) => {
+        console.warn(
+          `Impossible de supprimer l'ancienne image: ${err.message}`
+        );
+      });
     }
 
     // Upload via le service
@@ -30,8 +38,10 @@ module.exports.uploadProfil = async (req, res) => {
 
     res.send(updatedUser);
   } catch (err) {
-  console.error("Raw upload error:", err);
-  const errors = uploadErrors(err);
-  return res.status(400).json({ errors, rawMessage: err.message, rawError: err });
-}
+    console.error("Raw upload error:", err);
+    const errors = uploadErrors(err);
+    return res
+      .status(400)
+      .json({ errors, rawMessage: err.message, rawError: err });
+  }
 };

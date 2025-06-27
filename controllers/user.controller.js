@@ -6,12 +6,14 @@ module.exports.getAllUsers = async (req, res) => {
   try {
     const users = await UserModel.find().select("-password");
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`; 
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-    const usersWithFullPictureUrl = users.map(user => {
+    const usersWithFullPictureUrl = users.map((user) => {
       return {
         ...user._doc,
-        picture: user.picture ? `${baseUrl}/${user.picture.replace(/^\.?\/*/, '')}` : null
+        picture: user.picture
+          ? `${baseUrl}/${user.picture.replace(/^\.?\/*/, "")}`
+          : null,
       };
     });
 
@@ -21,8 +23,38 @@ module.exports.getAllUsers = async (req, res) => {
   }
 };
 
+// one user by id
+module.exports.getOneUser = async (req, res) => {
+  try {
+    if (!ObjectID.isValid(req.params.id)) {
+      return res.status(400).send("ID Inconnue : " + req.params.id);
+    }
 
-// update user 
+    // -  password
+    const user = await UserModel.findById(req.params.id).select("-password");
+
+    // Si aucun utilisateur trouvé
+    if (!user) {
+      return res.status(404).send("Utilisateur non trouvé.");
+    }
+
+    // URL complète pour l'image
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const userWithFullPictureUrl = {
+      ...user._doc,
+      picture: user.picture
+        ? `${baseUrl}/${user.picture.replace(/^\.?\/*/, "")}`
+        : null,
+    };
+
+    res.status(200).json(userWithFullPictureUrl);
+  } catch (err) {
+    console.log("Erreur lors de la récupération de l'utilisateur : ", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// update user
 module.exports.updateUser = async (req, res) => {
   if (!ObjectID.isValid(req.params.id))
     return res.status(400).send("ID Inconnue : " + req.params.id);
@@ -45,12 +77,13 @@ module.exports.updateUser = async (req, res) => {
   }
 };
 
-
-exports.sendFriendRequest = async (req, res) => {
+module.exports.sendFriendRequest = async (req, res) => {
   const { senderId, receiverId } = req.params;
 
   if (senderId === receiverId) {
-    return res.status(400).json({ message: "Vous ne pouvez pas vous ajouter vous-même" });
+    return res
+      .status(400)
+      .json({ message: "Vous ne pouvez pas vous ajouter vous-même" });
   }
 
   try {
@@ -80,12 +113,16 @@ exports.sendFriendRequest = async (req, res) => {
   }
 };
 
-exports.getFriendRequests = async (req, res) => {
+module.exports.getFriendRequests = async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const user = await UserModel.findById(userId).populate("friendRequests", "username picture");
-    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    const user = await UserModel.findById(userId).populate(
+      "friendRequests",
+      "username picture"
+    );
+    if (!user)
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
 
     res.status(200).json(user.friendRequests);
   } catch (err) {
@@ -93,8 +130,7 @@ exports.getFriendRequests = async (req, res) => {
   }
 };
 
-
-exports.acceptFriendRequest = async (req, res) => {
+module.exports.acceptFriendRequest = async (req, res) => {
   const { userId, requesterId } = req.params;
 
   try {
@@ -107,7 +143,9 @@ exports.acceptFriendRequest = async (req, res) => {
 
     // Vérifie que la demande existe
     if (!user.friendRequests.includes(requesterId)) {
-      return res.status(400).json({ message: "Aucune demande de cet utilisateur" });
+      return res
+        .status(400)
+        .json({ message: "Aucune demande de cet utilisateur" });
     }
 
     // Ajouter dans la liste d'amis
@@ -122,8 +160,31 @@ exports.acceptFriendRequest = async (req, res) => {
     await user.save();
     await requester.save();
 
-    res.status(200).json({ message: "Demande acceptée, vous êtes maintenant amis" });
+    res
+      .status(200)
+      .json({ message: "Demande acceptée, vous êtes maintenant amis" });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports.updateScore = async (req, res) => {
+  if (!ObjectID.isValid(req.params.id))
+    return res.status(400).send("ID Inconnue : " + req.params.id);
+
+  try {
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        $set: {
+          score: req.body.score,
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).select("-password");
+
+    res.send(updatedUser);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };

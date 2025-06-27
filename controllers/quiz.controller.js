@@ -7,14 +7,17 @@ module.exports.newCategory = async (req, res) => {
   try {
     const { theme, description } = req.body;
 
-    if (!req.files || !req.files.logo || !req.files.image) {
+    if (!theme || !description) {
+      return res.status(400).json({ message: "Theme et description sont requis." });
+    }
+
+    if (!req.files?.logo?.[0] || !req.files?.image?.[0]) {
       return res.status(400).json({ message: "Logo et image sont requis." });
     }
 
     const logoFile = req.files.logo[0];
     const imageFile = req.files.image[0];
 
-    // Uploader le logo (ex: dossier 'categories/logo')
     const logoPath = await uploadImage(
       logoFile.buffer,
       logoFile.mimetype,
@@ -22,7 +25,6 @@ module.exports.newCategory = async (req, res) => {
       `logo_${Date.now()}.${logoFile.mimetype.split('/')[1]}`
     );
 
-    // Upload de l'image (ex: dossier 'categories/image')
     const imagePath = await uploadImage(
       imageFile.buffer,
       imageFile.mimetype,
@@ -30,18 +32,19 @@ module.exports.newCategory = async (req, res) => {
       `image_${Date.now()}.${imageFile.mimetype.split('/')[1]}`
     );
 
-    // Créer la catégorie en stockant les chemins vers logo et image
     const newCategory = new Category({
       theme,
       description,
       logo: logoPath,
       image: imagePath,
+      subThemes: [] // vide à la création
     });
 
     await newCategory.save();
 
-    return res.status(200).json(newCategory);
+    return res.status(201).json(newCategory);
   } catch (err) {
+    console.error("Erreur création catégorie :", err);
     return res.status(500).json({ message: err.message });
   }
 };
@@ -49,9 +52,13 @@ module.exports.newCategory = async (req, res) => {
 
 module.exports.newQuizz = async (req, res) => {
   try {
-    const { categoryId, questions } = req.body;
-    const parsedQuestions = JSON.parse(questions); // parse le tableau JSON
+    const { categoryId, subThemeTitle, questions } = req.body;
 
+    if (!categoryId || !subThemeTitle || !questions) {
+      return res.status(400).json({ message: "Champs requis manquants." });
+    }
+
+    const parsedQuestions = JSON.parse(questions);
     const imageFiles = req.files?.image || [];
 
     if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
@@ -69,45 +76,114 @@ module.exports.newQuizz = async (req, res) => {
       return res.status(404).json({ message: "Catégorie non trouvée." });
     }
 
-    // Pour chaque question + image associée
+    // tableau de questions
+    const questionsList = [];
+
     for (let i = 0; i < parsedQuestions.length; i++) {
       const q = parsedQuestions[i];
       const img = imageFiles[i];
-
       const ext = img.mimetype.split("/")[1];
       const fileName = `question_${Date.now()}_${i}.${ext}`;
 
       const imagePath = await uploadImage(img.buffer, img.mimetype, "quizz", fileName);
 
-      const newQuestion = {
+      questionsList.push({
         question: q.question,
         options: q.options,
         answer: q.answer,
         image: imagePath,
-      };
-
-      category.questions.push(newQuestion);
+      });
     }
 
+    const newSubTheme = {
+      title: subThemeTitle,
+      questions: questionsList,
+    };
+
+    category.subThemes.push(newSubTheme);
     await category.save();
 
-    return res.status(201).json({ message: "Questions ajoutées avec succès.", category });
+    return res.status(201).json({ message: "Sous-thème créé avec succès.", category });
   } catch (err) {
-    console.error("Erreur:", err.message);
+    console.error("Erreur ajout sous-thème :", err);
     return res.status(500).json({ message: err.message });
   }
 };
 
 
+
+
+
 module.exports.getAllCategory = async (req, res) => {
-  const category = await Category.find().select("-questions");
-  res.status(200).json(category);
+  try {
+    // On récupère uniquement le titre des subThemes (pas leurs questions)
+    const categories = await Category.find().lean();
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    const categoriesWithoutQuestions = categories.map((category) => {
+     
+      const cleanedSubThemes = category.subThemes?.map((subTheme) => ({
+        title: subTheme.title 
+      })) || [];
+
+      return {
+        ...category,
+        subThemes: cleanedSubThemes,
+        logo: category.logo
+          ? `${baseUrl}/${category.logo.replace(/^\.?\/*/, "")}`
+          : null,
+        image: category.image
+          ? `${baseUrl}/${category.image.replace(/^\.?\/*/, "")}`
+          : null,
+      };
+    });
+
+    return res.status(200).json(categoriesWithoutQuestions);
+  } catch (err) {
+    console.error("Erreur récupération catégories :", err);
+    return res.status(500).json({ message: err.message });
+  }
 };
 
-module.exports.getOneQuestion = async (req, res) => {
-  if (!ObjectID.isValid(req.params.id))
-    return res.status(400).send("ID Inconnue : " + req.params.id);
 
-  const question = await Category.findById(ObjectID);
-  res.status(200).json(question);
+module.exports.getOneQuestion = async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+
+    if (!ObjectID.isValid(categoryId)) {
+      return res.status(400).send("ID Inconnu : " + categoryId);
+    }
+
+    const category = await Category.findById(categoryId).lean();
+
+    if (!category || !category.subThemes || category.subThemes.length === 0) {
+      return res.status(404).json({ message: "Aucun sous-thème trouvé pour cette catégorie." });
+    }
+
+    const randomIndex = Math.floor(Math.random() * category.subThemes.length);
+    const randomSubTheme = category.subThemes[randomIndex];
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    const questionsWithFullPictureUrl = randomSubTheme.questions.map((q) => {
+      return {
+        ...q,
+        image: q.image
+          ? `${baseUrl}/${q.image.replace(/^\.?\/*/, "")}`
+          : null,
+      };
+    });
+
+    return res.status(200).json({
+      category: category.theme,
+      subTheme: {
+        title: randomSubTheme.title,
+        questions: questionsWithFullPictureUrl
+      }
+    });
+  } catch (err) {
+    console.error("Erreur getRandomSubThemeFromCategory :", err);
+    return res.status(500).json({ message: err.message });
+  }
 };

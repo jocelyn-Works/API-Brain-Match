@@ -3,7 +3,7 @@ const path = require("path");
 
 // Types de fichiers autorisés
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-const maxSize = 500000; // 500 Ko
+const maxSize = 4 * 1024 * 1024; // 1000 Ko
 
 /**
  * Service générique pour uploader un fichier image

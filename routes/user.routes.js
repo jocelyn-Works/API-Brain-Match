@@ -12,12 +12,19 @@ const upload = multer({ storage: storage });
 router.post("/register", authController.signUp);
 // login 
 router.post("/login", authController.signIn);
+
+router.post("/logout", authController.logout);
+
 /////////////////////////////////////////////////
+
 // upload
 router.post("/upload", upload.single('file'), uploadController.uploadProfil);
-
+// updtare score
+router.put("/score/:id", userController.updateScore);
 // all user
 router.get("/", userController.getAllUsers);
+// one user
+router.get("/:id",userController.getOneUser)
 // update one user 
 router.put("/:id", userController.updateUser);
 

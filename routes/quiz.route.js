@@ -10,9 +10,9 @@ router.post("/category", upload.fields([
   { name: 'image', maxCount: 1 },
 ]), quizzController.newCategory);
 
-router.get("/category/all", quizzController.getAllCategory);
+router.get("/category", quizzController.getAllCategory);
 
-router.get("/question/all", quizzController.getOneQuestion)
+//router.get("/question", quizzController.getOneQuestion);
 
 router.post("/question",upload.fields([{ name: "image"}]), quizzController.newQuizz);
 
