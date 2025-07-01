@@ -19,7 +19,7 @@ router.post("/logout", authController.logout);
 
 // upload
 router.post("/upload", upload.single('file'), uploadController.uploadProfil);
-// updtare score
+// update score
 router.put("/score/:id", userController.updateScore);
 // all user
 router.get("/", userController.getAllUsers);

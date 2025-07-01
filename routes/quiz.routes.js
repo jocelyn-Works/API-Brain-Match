@@ -17,4 +17,5 @@ router.post("/question",upload.fields([{ name: "image"}]), quizzController.newQu
 router.get("/question/:id", quizzController.getOneQuestionByCategory);
 
 
+
 module.exports = router;

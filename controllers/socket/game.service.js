@@ -5,10 +5,10 @@ const waitingRoomsByCategory = {};
 function socketGame(io) {
   io.on("connection", (socket) => {
     
-    console.log(`connected !!`);
-console.log('socket connecté :', socket.id);
+    //console.log(`connected !!`);
+    //console.log('socket connecté :', socket.id);
     socket.on("join_game", async (userData) => {
-      const { username, categoryId } = userData;  // rejoindre une partie avec nom dutilisateur + une category de question
+      const { username, categoryId,  } = userData;  // rejoindre une partie avec nom dutilisateur + une category de question
 
       if (!categoryId) {
         socket.emit("error", { message: "Catégorie non fournie" });
@@ -51,13 +51,13 @@ console.log('socket connecté :', socket.id);
         let questions = quiz.subTheme.questions;
 
         questions.forEach(element => {
-          element
+          console.log(element)
           
         });
         
         console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
         
-        console.log(questions)
+        //console.log(questions)
         
         //console.log(quiz.subTheme.questions)
 

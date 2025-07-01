@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="max-w-7xl mx-auto p-6 space-y-10">
+
+        <section class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-3xl font-bold mb-6 text-blue-600">Créer une catégorie</h2>
+            <form id="categoryForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">Thème</label>
+                    <input type="text" name="theme" required class="w-full p-3 border border-gray-300 rounded"
+                        placeholder="Ex: Histoire" />
+                </div>
+
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">Logo (image)</label>
+                    <input type="file" name="logo" id="logoInput" accept="image/*" required
+                        class="w-full p-2 border rounded" />
+                    <img id="logoPreview" src="" alt="Prévisualisation logo"
+                        class="mt-2 h-20 hidden object-contain rounded" />
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block mb-1 font-medium text-gray-700">Description</label>
+                    <textarea name="description" required class="w-full p-3 border border-gray-300 rounded"
+                        placeholder="Brève description du thème..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-1 font-medium text-gray-700">Image principale</label>
+                    <input type="file" name="image" id="imageInput" accept="image/*" required
+                        class="w-full p-2 border rounded" />
+                    <img id="imagePreview" src="" alt="Prévisualisation image"
+                        class="mt-2 h-20 hidden object-cover rounded" />
+                </div>
+
+                <div class="md:col-span-2">
+                    <button type="submit"
+                        class="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 transition w-full">Créer la
+                        catégorie</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Créer des questions -->
+        <section class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-3xl font-bold mb-6 text-green-600">Ajouter des questions</h2>
+
+            <form id="questionForm" class="space-y-6">
+
+                <!-- Sélecteur de catégorie -->
+                <div>
+                    <label class="block text-lg font-medium mb-1">Choisir une catégorie</label>
+                    <select id="categorySelect" name="categoryId" required
+                        class="w-full p-3 border border-gray-300 rounded">
+                        <option value="">-- Sélectionner une catégorie --</option>
+                    </select>
+                </div>
+
+                <!-- Champ pour sous-thème -->
+                <div>
+                    <input type="text" name="subThemeTitle" placeholder="Sous-thème" required
+                        class="w-full p-3 border border-gray-300 rounded" />
+                </div>
+
+                <!-- Zone dynamique de questions -->
+                <div id="questionsContainer" class="space-y-6"></div>
+
+                <div class="flex gap-4">
+                    <button type="button" id="addQuestionBtn"
+                        class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition">+ Ajouter une
+                        question</button>
+
+                         <img id="questionPreview" src="" alt="Prévisualisation image"
+                        class="mt-2 h-20 hidden object-cover rounded" />
+                    <button type="submit"
+                        class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">Créer les
+                        questions</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script>
+        const categorySelect = document.getElementById("categorySelect");
+
+        // Récupération des catégories
+        async function loadCategories() {
+            try {
+                const res = await fetch("http://127.0.0.1:3000/api/quiz/category");
+                const categories = await res.json();
+                categories.forEach(cat => {
+                    const opt = document.createElement("option");
+                    opt.value = cat._id;
+                    opt.textContent = `${cat.theme} — ${cat.description}`;
+                    categorySelect.appendChild(opt);
+                });
+            } catch (e) {
+                alert("Erreur lors du chargement des catégories");
+            }
+            // Prévisualisation logo
+            document.getElementById("logoInput").addEventListener("change", function () {
+                const file = this.files[0];
+                const preview = document.getElementById("logoPreview");
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.classList.remove("hidden");
+                } else {
+                    preview.classList.add("hidden");
+                    preview.src = "";
+                }
+            });
+
+            // Prévisualisation image principale
+            document.getElementById("imageInput").addEventListener("change", function () {
+                const file = this.files[0];
+                const preview = document.getElementById("imagePreview");
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.classList.remove("hidden");
+                } else {
+                    preview.classList.add("hidden");
+                    preview.src = "";
+                }
+            });
+
+           
+        }
+
+        loadCategories();
+
+        // Envoi du formulaire de création de catégorie
+        document.getElementById("categoryForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const res = await fetch("http://localhost:3000/api/quiz/category", {
+                method: "POST",
+                body: formData
+            });
+
+            if (res.ok) {
+                alert("Catégorie créée !");
+                e.target.reset();
+                categorySelect.innerHTML = '<option value="">-- Sélectionner une catégorie --</option>';
+                loadCategories();
+            } else {
+                alert("Erreur lors de la création");
+            }
+        });
+
+        // Ajout dynamique de questions
+        let questionIndex = 0;
+        const maxQuestions = 10;
+        const container = document.getElementById("questionsContainer");
+        const addBtn = document.getElementById("addQuestionBtn");
+
+        addBtn.addEventListener("click", () => {
+    if (questionIndex >= maxQuestions) {
+        alert("Limite de 10 questions atteinte.");
+        return;
+    }
+
+    const block = document.createElement("div");
+    block.className = "bg-gray-50 p-4 rounded border space-y-3";
+
+    const inputId = `questionImage-${questionIndex}`;
+    const imgId = `questionPreview-${questionIndex}`;
+
+    block.innerHTML = `
+        <input type="text" name="questions[${questionIndex}][question]" placeholder="Question" required class="w-full p-2 border rounded"/>
+        <div class="grid grid-cols-2 gap-2">
+            <input type="text" name="questions[${questionIndex}][options][]" placeholder="Option 1" required class="p-2 border rounded"/>
+            <input type="text" name="questions[${questionIndex}][options][]" placeholder="Option 2" required class="p-2 border rounded"/>
+            <input type="text" name="questions[${questionIndex}][options][]" placeholder="Option 3" required class="p-2 border rounded"/>
+            <input type="text" name="questions[${questionIndex}][options][]" placeholder="Option 4" required class="p-2 border rounded"/>
+        </div>
+        <input type="text" name="questions[${questionIndex}][answer]" placeholder="Bonne réponse" required class="w-full p-2 border rounded"/>
+
+        <label class="block font-medium text-gray-700 mt-2">Image de la question</label>
+        <input type="file" name="questions[${questionIndex}][image]" id="${inputId}" accept="image/*" class="w-full p-2 border rounded"/>
+        <img id="${imgId}" src="" alt="Prévisualisation image" class="mt-2 h-20 hidden object-cover rounded"/>
+    `;
+
+    // Ajouter l'élément au conteneur
+    container.appendChild(block);
+
+    // Ajouter le listener de preview image à l'input qu'on vient de créer
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(imgId);
+
+    input.addEventListener("change", function () {
+        const file = this.files[0];
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove("hidden");
+        } else {
+            preview.classList.add("hidden");
+            preview.src = "";
+        }
+    });
+
+    questionIndex++;
+});
+
+        // Envoi du formulaire de création des questions
+        document.getElementById("questionForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            const res = await fetch("http://localhost:3000/api/quiz/question", {
+                method: "POST",
+                body: formData
+            });
+
+            if (res.ok) {
+                alert("Questions ajoutées !");
+                e.target.reset();
+                container.innerHTML = "";
+                questionIndex = 0;
+            } else {
+                alert("Erreur lors de la création des questions");
+            }
+        });
+    </script>
+</body>
+
+</html>
