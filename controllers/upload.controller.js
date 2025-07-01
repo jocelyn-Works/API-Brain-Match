@@ -11,7 +11,7 @@ module.exports.uploadProfil = async (req, res) => {
     const userId = req.body.userId;
     const fileName = `user_${userId}.jpg`;
 
-    // Supprime ancienne image si existante
+    // Supprime ancienne image si existe
     const user = await UserModel.findById(userId);
     if (user?.picture) {
       const oldFilePath = path.join(__dirname, "..", user.picture);

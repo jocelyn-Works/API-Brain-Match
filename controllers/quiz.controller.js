@@ -147,7 +147,7 @@ module.exports.getAllCategory = async (req, res) => {
 };
 
 
-module.exports.getOneQuestion = async (req, res) => {
+module.exports.getOneQuestionByCategory = async (req, res) => {
   try {
     const categoryId = req.params.id;
 

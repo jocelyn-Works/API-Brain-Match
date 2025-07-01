@@ -1,50 +1,55 @@
 const express = require("express");
-const mongoose = require('mongoose');
-const path = require('path');
-
-
-
-const http = require('http');
-const socketIo = require('socket.io');
-
+const http = require("http");
+const mongoose = require("mongoose");
+const path = require("path");
 require("dotenv").config({ path: "./config/.env" });
-const userRoutes = require("./routes/user.routes");
-const quizRoutes = require("./routes/quiz.route")
-
-const {checkUser, requireAuth} = require('./middleware/auth.middleware');
+const { Server } = require("socket.io");
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*'}
+});
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-
-
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB connecté"))
-.catch(err => console.error("Erreur MongoDB:", err));
-
-
+// midelware client
 app.use(express.json()); // POUR PARSER LES JSON
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+////// DB  ///////
+mongoose
+  .connect(process.env.MONGO_URI, {})
+  .then(() => console.log("MongoDB connecté"))
+  .catch((err) => {
+    console.error("MongoDB connection error:", err.message);
+    process.exit(1);
+  });
 
 app.get("/", (req, res) => {
   res.json("hello api !!!");
 });
 
-// jwt 
+// const {checkUser, requireAuth} = require('./middleware/auth.middleware');
+// jwt
 // app.get("*", checkUser);
 // app.get("/jwtid", requireAuth, (req, res) => {
 //   res.status(200).send(res.locals.user._id)
 // });
 
 // routes
+const userRoutes = require("./routes/user.routes");
+const quizRoutes = require("./routes/quiz.routes");
+
 app.use("/api/user", userRoutes);
 app.use("/api/quiz", quizRoutes);
 
+const socketGame = require("./controllers/socket/game.service");
+socketGame(io);
+
 // server
-app.listen(process.env.PORT, () => {
+server.listen(process.env.PORT, () => {
   console.log(`application Node : http://127.0.0.1:${process.env.PORT}`);
 });

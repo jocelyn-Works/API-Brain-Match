@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz Duel Socket.IO</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Quiz Duel Socket.IO</h1>
+
+    <label for="playerId">Nom d'utilisateur</label>
+    <input id="playerId" value="player1" />
+
+    <label for="categoryId">Choisis une catégorie</label>
+    <select id="categoryId">
+      <option disabled selected>Chargement des catégories...</option>
+    </select>
+
+    <button id="btnConnect">Se connecter et rejoindre une partie</button>
+
+    <div class="question-card" id="questionCard" style="display: none;">
+      <div class="info-bar">
+        <span id="scoreDisplay">Score : 0</span>
+        <span id="timer">Temps : 10s</span>
+      </div>
+      <div id="questionText" style="margin-top:10px;"></div>
+      <div class="answers" id="answerButtons"></div>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const questionCard = document.getElementById('questionCard');
+    const questionText = document.getElementById('questionText');
+    const answerButtons = document.getElementById('answerButtons');
+    const timerDisplay = document.getElementById('timer');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const categorySelect = document.getElementById('categoryId');
+
+    let socket;
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let timer;
+    let timeLeft = 10;
+    let score = 0;
+    let hasAnswered = false;
+    
+
+    function log(msg) {
+      logEl.textContent += msg + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(msg);
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('http://localhost:3000/api/quiz/category');
+        const categories = await res.json();
+        categorySelect.innerHTML = '<option disabled selected>Choisis une catégorie</option>';
+
+        categories.forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat._id;
+          opt.textContent = cat.theme;
+          categorySelect.appendChild(opt);
+        });
+      } catch (err) {
+        log('❌ Erreur de chargement des catégories');
+      }
+    }
+
+    function startTimer() {
+      timeLeft = 10;
+      timerDisplay.textContent = `Temps : ${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `Temps : ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (!hasAnswered) {
+            log('⏰ Temps écoulé, réponse non envoyée.');
+            showNextQuestion(); // à adapter selon serveur
+          }
+        }
+      }, 1000);
+    }
+
+    function showQuestion() {
+      const q = questions[currentQuestionIndex];
+      hasAnswered = false;
+      questionText.textContent = `Question ${currentQuestionIndex + 1}: ${q.question}`;
+      answerButtons.innerHTML = '';
+      questionCard.style.display = 'block';
+      startTimer();
+
+      q.answers.forEach((a, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = a;
+        btn.onclick = () => {
+          if (hasAnswered) return;
+          hasAnswered = true;
+          clearInterval(timer);
+          log(`✅ Réponse sélectionnée: ${a} (index ${i})`);
+          showNextQuestion(); // à adapter plus tard avec réponse serveur
+        };
+        answerButtons.appendChild(btn);
+      });
+    }
+
+    function showNextQuestion() {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) {
+        showQuestion();
+      } else {
+        log('🏁 Fin du quiz !');
+        questionCard.style.display = 'none';
+      }
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = `Score : ${score}`;
+    }
+
+    document.getElementById('btnConnect').onclick = () => {
+      const playerId = document.getElementById('playerId').value.trim();
+      const categoryId = categorySelect.value;
+
+      if (!categoryId) {
+        log('❌ Choisis une catégorie');
+        return;
+      }
+
+      socket = io('http://localhost:3000');
+
+      socket.on('connect', () => {
+        log('✅ Connecté au serveur avec id: ' + socket.id);
+
+        socket.emit('join_game', {
+          username: playerId,
+          categoryId: categoryId
+        });
+
+        log(`🕹️ En attente d’un adversaire dans la catégorie sélectionnée...`);
+      });
+
+      socket.on('start_game', (data) => {
+        const { roomId, players, quiz } = data;
+        questions = quiz;
+        currentQuestionIndex = 0;
+        score = 0;
+        updateScore();
+        log(`🎯 Partie lancée dans ${roomId} contre ${players.map(p => p.username).join(' vs ')} !`);
+        showQuestion();
+      });
+
+      socket.on('error', (err) => {
+        log(`❌ Erreur : ${err.message}`);
+      });
+    };
+
+    // Charger les catégories au démarrage
+    loadCategories();
+  </script>
+</body>
+</html>

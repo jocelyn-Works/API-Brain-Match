@@ -12,11 +12,9 @@ router.post("/category", upload.fields([
 
 router.get("/category", quizzController.getAllCategory);
 
-//router.get("/question", quizzController.getOneQuestion);
-
 router.post("/question",upload.fields([{ name: "image"}]), quizzController.newQuizz);
 
-router.get("/question/:id", quizzController.getOneQuestion);
+router.get("/question/:id", quizzController.getOneQuestionByCategory);
 
 
 module.exports = router;
