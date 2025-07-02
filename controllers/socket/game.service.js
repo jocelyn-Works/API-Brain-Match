@@ -57,15 +57,14 @@ function socketGame(io) {
         
         console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
         
-        //console.log(questions)
         
-        //console.log(quiz.subTheme.questions)
 
         
         
           
       }
     });
+
 
     socket.on("disconnect", () => {
       console.log(`Déconnexion : ${socket.id}`);
