@@ -1,202 +1,143 @@
 const { getRandomSubThemeQuestions } = require("../../controllers/socket/quiz.service");
 
+const UserModel = require("../../models/user.model"); // adapte le chemin si besoin
+const jwt = require('jsonwebtoken')
+
 const waitingRoomsByCategory = {};
-const roomsState = {}; // état de la room : question courante, si déjà validée
+const activeGames = {};
 
 function socketGame(io) {
   io.on("connection", (socket) => {
-    
-    socket.on("join_game", async (userData) => {
-      const { username, categoryId } = userData;
 
-      if (!categoryId) {
-        socket.emit("error", { message: "Catégorie non fournie" });
-        return;
+    socket.on("join_game", async ({ token, categoryId }) => {
+
+      if (!token || !categoryId) {
+        return socket.emit("error", { message: "Token ou catégorie manquants" });
       }
 
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+      } catch (err) {
+        return socket.emit("error", { message: "Token invalide" });
+      }
+
+      const user = await UserModel.findById(decoded.id).select("username picture score");
+      if (!user) {
+        return socket.emit("error", { message: "Utilisateur introuvable" });
+      }
+
+      const fullData = {
+        _id: user._id,
+        username: user.username,
+        picture: user.picture,
+        score: user.score,
+        categoryId
+      };
+
+      // ajout joueur ds room
       if (!waitingRoomsByCategory[categoryId]) {
         waitingRoomsByCategory[categoryId] = [];
       }
+      waitingRoomsByCategory[categoryId].push({ socket, userData: fullData });
 
-      waitingRoomsByCategory[categoryId].push({ socket, userData });
-
+      // lancement game
       if (waitingRoomsByCategory[categoryId].length === 2) {
         const player1 = waitingRoomsByCategory[categoryId].shift();
         const player2 = waitingRoomsByCategory[categoryId].shift();
 
+        // creation room ID / 2 joueurs ds la meme room donc ds le meme objet 
         const roomId = `room-${player1.socket.id}-${player2.socket.id}`;
         player1.socket.join(roomId);
         player2.socket.join(roomId);
 
-        const quiz = await getRandomSubThemeQuestions(categoryId);
+        const quiz = await getRandomSubThemeQuestions(categoryId); // recupération des questions en fonction de la categorie
+
+        // si quiz introuvable
         if (!quiz) {
           io.to(roomId).emit("error", { message: "Aucune question pour cette catégorie." });
           return;
         }
 
-        // Initialiser l'état de la room
-        roomsState[roomId] = {
+        // initialisation du score a 0 
+        activeGames[roomId] = {
           quiz,
-          currentQuestionIndex: 0,
-          questionAnswered: false, // question non encore validée
-          playersAnswered: new Set(), // sockets qui ont déjà répondu pour éviter multi réponses
+          scores: {
+            [player1.userData.username]: 0,
+            [player2.userData.username]: 0
+          }
         };
 
+        // event start game / recupere bien les users connectes ???
         io.to(roomId).emit("start_game", {
           roomId,
           players: [player1.userData, player2.userData],
           message: "La partie commence !",
-          quiz,
+          quiz
+        });
+
+        // juste pr afficher les questions server side 
+        let questions = quiz.subTheme.questions;
+
+        questions.forEach(element => {
+          console.log(element)
+
         });
 
         console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
       }
     });
 
-    // Nouveau : écoute la réponse d'un joueur
-    socket.on("submit_answer", ({ roomId, answer }) => {
-      const state = roomsState[roomId];
-      if (!state) {
-        socket.emit("error", { message: "Room inconnue" });
-        return;
-      }
+    const answeredQuestions = {}; // { roomId: { questionIndex: { username: answer } } }
 
-      // Vérifie que le joueur n'a pas déjà répondu
-      if (state.playersAnswered.has(socket.id)) {
-        socket.emit("error", { message: "Vous avez déjà répondu à cette question." });
-        return;
-      }
+    // quand un joueur repond a une question
+    socket.on('player_answer', (data) => {
 
-      // Si question déjà répondue correctement, on ignore
-      if (state.questionAnswered) {
-        socket.emit("info", { message: "Question déjà validée." });
-        return;
-      }
+      // def des data recup
+      const { roomId, questionIndex, answer, username } = data;
 
-      const currentQuestion = state.quiz.subTheme.questions[state.currentQuestionIndex];
+      // stockage des reponses
+      if (!answeredQuestions[roomId]) answeredQuestions[roomId] = {};
+      if (!answeredQuestions[roomId][questionIndex]) answeredQuestions[roomId][questionIndex] = {};
+      answeredQuestions[roomId][questionIndex][username] = answer;
 
-      if (!currentQuestion) {
-        socket.emit("error", { message: "Question non trouvée." });
-        return;
-      }
+      // verif si les 2 joueurs ont repondu
+      const answers = answeredQuestions[roomId][questionIndex];
+      const players = Object.keys(answers);
 
-      // Enregistre que ce joueur a répondu
-      state.playersAnswered.add(socket.id);
+      // Suppose que la room a 2 joueurs
+      if (players.length === 2) {
+        const quiz = activeGames[roomId].quiz;
+        const correctAnswer = quiz.subTheme.questions[questionIndex].answer;
 
-      // Vérifie la réponse
-      const isCorrect = answer === currentQuestion.correctAnswer; // adapte selon ta structure
-
-      if (isCorrect) {
-        state.questionAnswered = true;
-        // Diffuse la bonne réponse à tous les joueurs de la room
-        io.to(roomId).emit("question_result", {
-          correctAnswer: currentQuestion.correctAnswer,
-          message: `${socket.id} a répondu correctement !`,
-          winnerSocketId: socket.id,
+        // m a j du score
+        const playersScores = players.map((player) => {
+          const isCorrect = answers[player] === correctAnswer;
+          if (!activeGames[roomId].scores[player]) activeGames[roomId].scores[player] = 0;
+          if (isCorrect) activeGames[roomId].scores[player]++;
+          return {
+            username: player,
+            score: activeGames[roomId].scores[player],
+          };
         });
-      } else {
-        // Optionnel : on peut aussi informer que c’est incorrect, mais laisser l’autre joueur répondre
-        socket.emit("answer_result", { correct: false, message: "Mauvaise réponse, essayez encore." });
+
+        // resultat envoye a la room          
+        io.to(roomId).emit('question_result', {
+          correctAnswer,
+          playersScores,
+          nextQuestionIndex: questionIndex + 1,
+        });
       }
     });
 
+    // deconnexion
     socket.on("disconnect", () => {
+      console.log(`Déconnexion : ${socket.id}`);
       for (const catId in waitingRoomsByCategory) {
         waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(p => p.socket.id !== socket.id);
       }
-      // Nettoyer l'état des rooms si besoin (à améliorer)
-      for (const roomId in roomsState) {
-        if (roomsState[roomId].playersAnswered.has(socket.id)) {
-          roomsState[roomId].playersAnswered.delete(socket.id);
-        }
-      }
-      console.log(`Déconnexion : ${socket.id}`);
     });
   });
 }
 
 module.exports = socketGame;
-
-
-
-
-
-
-// const { getRandomSubThemeQuestions } = require("../../controllers/socket/quiz.service");
-
-// const waitingRoomsByCategory = {};
-
-// function socketGame(io) {
-//   io.on("connection", (socket) => {
-    
-//     //console.log(`connected !!`);
-//     //console.log('socket connecté :', socket.id);
-//     socket.on("join_game", async (userData) => {
-//       const { username, categoryId,  } = userData;  // rejoindre une partie avec nom dutilisateur + une category de question
-
-//       if (!categoryId) {
-//         socket.emit("error", { message: "Catégorie non fournie" });
-//         return;
-//       }
-
-//       console.log(`${username} attend dans la catégorie ${categoryId}`);
-
-//       if (!waitingRoomsByCategory[categoryId]) {
-//         waitingRoomsByCategory[categoryId] = [];
-//       }
-
-//       waitingRoomsByCategory[categoryId].push({ socket, userData });
-
-//       if (waitingRoomsByCategory[categoryId].length === 2) {
-//         const player1 = waitingRoomsByCategory[categoryId].shift();
-//         const player2 = waitingRoomsByCategory[categoryId].shift();
-
-//         const roomId = `room-${player1.socket.id}-${player2.socket.id}`;
-//         player1.socket.join(roomId);
-//         player2.socket.join(roomId);
-
-//         const quiz = await getRandomSubThemeQuestions(categoryId); // question pour la category choisi
-
-//         if (!quiz) {
-//           io.to(roomId).emit("error", { message: "Aucune question pour cette catégorie." });
-//           return;
-//         }
-
-//         io.to(roomId).emit("start_game", {
-//           roomId,
-//           players: [player1.userData, player2.userData],
-//           message: "La partie commence !",
-//           quiz
-
-
-          
-//         });
-
-//         let questions = quiz.subTheme.questions;
-
-//         questions.forEach(element => {
-//           console.log(element)
-          
-//         });
-        
-//         console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
-        
-        
-
-        
-        
-          
-//       }
-//     });
-
-
-//     socket.on("disconnect", () => {
-//       console.log(`Déconnexion : ${socket.id}`);
-//       for (const catId in waitingRoomsByCategory) {
-//         waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(p => p.socket.id !== socket.id);
-//       }
-//     });
-//   });
-// }
-
-// module.exports = socketGame;
