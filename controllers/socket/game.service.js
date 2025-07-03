@@ -1,10 +1,12 @@
 const { getRandomSubThemeQuestions } = require("../../controllers/socket/quiz.service");
 
 const waitingRoomsByCategory = {};
+const gameStateByRoom = {};
+
 
 function socketGame(io) {
   io.on("connection", (socket) => {
-    
+
     //console.log(`connected !!`);
     //console.log('socket connecté :', socket.id);
     socket.on("join_game", async (userData) => {
@@ -43,27 +45,60 @@ function socketGame(io) {
           players: [player1.userData, player2.userData],
           message: "La partie commence !",
           quiz
-
-
-          
         });
+        gameStateByRoom[roomId] = {
+          players: {
+            [player1.socket.id]: { answered: false },
+            [player2.socket.id]: { answered: false }
+          },
+          currentQuestionIndex: 0,
+          totalQuestions: quiz.subTheme.questions.length,
+          quiz,
+          timeoutId: null
+        };
+        // 10 secondes pour répondre à la première question
+        gameStateByRoom[roomId].timeoutId = setTimeout(() => {
+          io.to(roomId).emit("next_question");
+          resetRoomState(io, roomId);
+        }, 10000);
+
+
 
         let questions = quiz.subTheme.questions;
 
         questions.forEach(element => {
           console.log(element)
-          
-        });
-        
-        console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
-        
-        
 
-        
-        
-          
+        });
+
+        console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
+
+
+
+
+
+
       }
     });
+
+    socket.on("player_answer", ({ roomId, questionIndex, answer, correct }) => {
+      const roomState = gameStateByRoom[roomId];
+      if (!roomState) return;
+
+      if (questionIndex !== roomState.currentQuestionIndex) return; // réponse en décalage
+
+      roomState.players[socket.id] = { answered: true };
+
+      const allAnswered = Object.values(roomState.players).every(p => p.answered);
+
+      if (allAnswered) {
+        clearTimeout(roomState.timeoutId);
+        io.to(roomId).emit("next_question");
+
+        resetRoomState(io, roomId);
+      }
+    });
+
 
 
     socket.on("disconnect", () => {
@@ -74,5 +109,31 @@ function socketGame(io) {
     });
   });
 }
+
+function resetRoomState(io, roomId) {
+  const roomState = gameStateByRoom[roomId];
+  if (!roomState) return;
+
+  // Incrémente la question courante
+  roomState.currentQuestionIndex++;
+
+  // Vérifie s’il reste des questions
+  if (roomState.currentQuestionIndex >= roomState.totalQuestions) {
+    delete gameStateByRoom[roomId];
+    return;
+  }
+
+  // Réinitialise les réponses
+  Object.keys(roomState.players).forEach(id => {
+    roomState.players[id].answered = false;
+  });
+
+  // Relance un timeout pour la prochaine question
+  roomState.timeoutId = setTimeout(() => {
+    io.to(roomId).emit("next_question");
+    resetRoomState(io, roomId);
+  }, 10000);
+}
+
 
 module.exports = socketGame;

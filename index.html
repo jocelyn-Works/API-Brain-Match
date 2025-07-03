@@ -70,6 +70,7 @@
       let timer;
       let timeLeft = 10;
       let score = 0;
+      let roomId;
       let hasAnswered = false;
 
       function log(msg) {
@@ -105,10 +106,18 @@
           if (timeLeft <= 0) {
             clearInterval(timer);
             if (!hasAnswered) {
+              hasAnswered = true;
               log("⏰ Temps écoulé, réponse non envoyée.");
-              showNextQuestion();
+              socket.emit("player_answer", {
+                roomId,
+                questionIndex: currentQuestionIndex,
+                answer: null,
+                correct: false
+              });
+              Array.from(answerButtons.children).forEach(b => b.disabled = true);
             }
           }
+
         }, 1000);
       }
 
@@ -136,7 +145,8 @@
             hasAnswered = true;
             clearInterval(timer);
 
-            if (a === q.answer) {
+            const correct = a === q.answer;
+            if (correct) {
               score++;
               updateScore();
               log(`✅ Bonne réponse : ${a}`);
@@ -146,10 +156,17 @@
               btn.classList.add("bg-red-200", "border-red-500");
             }
 
-            setTimeout(() => {
-              showNextQuestion();
-            }, 1500); // petite pause pour feedback visuel
+            // Désactiver tous les boutons
+            Array.from(answerButtons.children).forEach(b => b.disabled = true);
+
+            socket.emit("player_answer", {
+              roomId,
+              questionIndex: currentQuestionIndex,
+              answer: a,
+              correct
+            });
           };
+
           answerButtons.appendChild(btn);
         });
       }
@@ -191,7 +208,7 @@
         });
 
         socket.on("start_game", (data) => {
-          const { roomId, players, quiz } = data;
+          const { roomId: receivedRoomId, players, quiz } = data;
 
           if (!quiz?.subTheme?.questions?.length) {
             log("❌ Aucune question reçue.");
@@ -209,12 +226,19 @@
               .join(" vs ")} !`
           );
           showQuestion();
+          roomId = receivedRoomId; // stocker la room globale
+
         });
 
         socket.on("error", (err) => {
           log(`❌ Erreur : ${err.message}`);
         });
+        socket.on("next_question", () => {
+          showNextQuestion();
+        });
+
       };
+
 
       loadCategories();
     </script>
