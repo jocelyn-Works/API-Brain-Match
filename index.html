@@ -215,8 +215,19 @@
           log(`❌ Erreur : ${err.message}`);
         });
       };
-
       loadCategories();
+      socket.on("answer_question", (data) => {
+        const { question, answer, isCorrect } = data;
+        if (isCorrect) {
+          log(`✅ Réponse correcte : ${answer}`);
+        } else {
+          log(`❌ Mauvaise réponse. La bonne réponse était : ${question.answer}`);
+        }
+      });
+
+      socket.on("disconnect", () => {
+        log("🔌 Déconnecté du serveur");
+      });
     </script>
   </body>
 </html>

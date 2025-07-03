@@ -3,13 +3,12 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { signUpErrors, signInErrors } = require('../utils/error.utils');
 
-   // 3 jours / 24 heures / 60 minutes / 60 secondes / 1000 millisecondes
-const maxAge = 3 * 24 * 60 * 60 * 1000;
+const maxAge = 3 * 24 * 60 * 60; // 3 jours en secondes (259200 secondes)
 
 const createToken = (id) => {
-  return jwt.sign({id}, process.env.TOKEN_SECRET, {
-    expiresIn: maxAge
-  })
+  return jwt.sign({ id }, process.env.TOKEN_SECRET, {
+    expiresIn: maxAge // OK, en secondes
+  });
 };
 
 // Inscription
@@ -55,6 +54,7 @@ module.exports.signIn = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Deconnexion
 module.exports.logout = (req, res) => {

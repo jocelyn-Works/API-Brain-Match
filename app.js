@@ -5,21 +5,24 @@ const path = require("path");
 require("dotenv").config({ path: "./config/.env" });
 const { Server } = require("socket.io");
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
 
 const app = express();
+app.use(cookieParser());
+
 app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*'}
+  cors: { origin: '*' }
 });
 
-// midelware client
-app.use(express.json()); // POUR PARSER LES JSON
+// Middleware client
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-////// DB  ///////
+// DB connection
 mongoose
   .connect(process.env.MONGO_URI, {})
   .then(() => console.log("MongoDB connecté"))
@@ -32,24 +35,35 @@ app.get("/", (req, res) => {
   res.json("hello api !!!");
 });
 
-// const {checkUser, requireAuth} = require('./middleware/auth.middleware');
-// jwt
-// app.get("*", checkUser);
-// app.get("/jwtid", requireAuth, (req, res) => {
-//   res.status(200).send(res.locals.user._id)
-// });
+// Import des middlewares auth
+const { checkUser, requireAuth } = require('./middleware/auth.middleware');
 
-// routes
+// Import des routes
+const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const quizRoutes = require("./routes/quiz.routes");
 
-app.use("/api/user", userRoutes);
-app.use("/api/quiz", quizRoutes);
+// // Routes publiques (login / register)
+// app.use('/api', (req, res, next) => {
+//   if (req.path === '/login' || req.path === '/register') {
+//     return next(); // on skip checkUser pour ces routes publiques
+//   }
+//   checkUser(req, res, next);
+// });
 
+app.use("/api", authRoutes); 
+
+// Routes protégées par requireAuth
+// app.use('/api/user', requireAuth, userRoutes);
+// app.use('/api/quiz', requireAuth, quizRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/quiz', quizRoutes);
+
+// Socket.io
 const socketGame = require("./controllers/socket/game.service");
 socketGame(io);
 
-// server
+// Démarrage serveur
 server.listen(process.env.PORT, () => {
   console.log(`application Node : http://127.0.0.1:${process.env.PORT}`);
 });
