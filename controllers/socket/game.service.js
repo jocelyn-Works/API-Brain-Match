@@ -1,6 +1,6 @@
-import { getRandomSubThemeQuestions, updateUserScore } from "../../controllers/socket/quiz.service";
+const  { getRandomSubThemeQuestions, updateUserScore } = require ("../../controllers/socket/quiz.service.js");
 
-import { default as mongoose } from "mongoose";
+const mongoose = require("mongoose");
 
 const waitingRoomsByCategory = {};
 const games = {};
@@ -187,4 +187,4 @@ async function endGame(io, roomId) {
 
 
 
-export default socketGame;
+module.exports = socketGame;
