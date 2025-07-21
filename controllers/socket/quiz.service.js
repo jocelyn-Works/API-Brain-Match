@@ -1,5 +1,6 @@
 // services/quiz.service.js
 const Category = require("../../models/quiz.model");
+const UserModel = require("../../models/user.model");
 
 async function getRandomSubThemeQuestions(categoryId) {
   const category = await Category.findById(categoryId).lean();
@@ -32,6 +33,20 @@ async function getRandomSubThemeQuestions(categoryId) {
   };
 }
 
+// Met à jour le score en base MongoDB
+async function updateUserScore(userId, pointsToAdd) {
+  try {
+    await UserModel.findByIdAndUpdate(
+      userId,
+      { $inc: { score: pointsToAdd } }, // incrémente directement
+      { new: true }
+    );
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour du score :", err);
+  }
+}
+
 module.exports = {
   getRandomSubThemeQuestions,
+  updateUserScore
 };
