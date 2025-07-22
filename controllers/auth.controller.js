@@ -7,7 +7,7 @@ const maxAge = 3 * 24 * 60 * 60; // 3 jours en secondes (259200 secondes)
 
 const createToken = (id) => {
   return jwt.sign({ id }, process.env.TOKEN_SECRET, {
-    expiresIn: maxAge // OK, en secondes
+    expiresIn: maxAge 
   });
 };
 
@@ -59,5 +59,4 @@ module.exports.signIn = async (req, res) => {
 // Deconnexion
 module.exports.logout = (req, res) => {
     res.cookie('jwt', '', { maxAge: 1});
-    res.redirect('/');
 }
