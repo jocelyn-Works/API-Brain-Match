@@ -1,5 +1,6 @@
 // services/quiz.service.js
 const Category = require("../../models/quiz.model");
+const UserModel = require("../../models/user.model")
 
 async function getRandomSubThemeQuestions(categoryId) {
   const category = await Category.findById(categoryId).lean();
