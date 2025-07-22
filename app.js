@@ -22,6 +22,12 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// FRONT ADMIN
+app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
 // DB connection
 mongoose
   .connect(process.env.MONGO_URI, {})
@@ -31,9 +37,6 @@ mongoose
     process.exit(1);
   });
 
-app.get("/", (req, res) => {
-  res.json("hello api !!!");
-});
 
 // Import des middlewares auth
 //const { checkUser, requireAuth } = require('./middleware/auth.middleware');
