@@ -6,7 +6,6 @@ const waitingRoomsByCategory = {};
 const activeGames = {};
 const gameStateByRoom = {};
 
-// 🔐 Middleware d'authentification pour toutes les connexions socket
 function socketGame(io) {
   io.use((socket, next) => {
     // const authHeader = socket.handshake.headers['authorization'];
@@ -83,6 +82,8 @@ function socketGame(io) {
           players: [player1.userData, player2.userData],
           message: "La partie commence !",
           quiz
+          // question: quiz.subTheme.questions[0], // ⚠️ Une seule question
+          // questionIndex: 0
         });
 
         gameStateByRoom[roomId] = {
@@ -97,6 +98,8 @@ function socketGame(io) {
         };
 
         gameStateByRoom[roomId].timeoutId = setTimeout(() => {
+          // gameStateByRoom[roomId].currentQuestionIndex++;
+          // sendNextQuestion(io, roomId);
           io.to(roomId).emit("next_question");
           resetRoomState(io, roomId);
         }, 10000);
@@ -183,3 +186,88 @@ function resetRoomState(io, roomId) {
 }
 
 module.exports = socketGame;
+
+//     const answeredQuestions = {};
+
+
+//     socket.on("player_answer", ({ roomId, questionIndex, answer }) => {
+//       const roomState = gameStateByRoom[roomId];
+//       if (!roomState || questionIndex !== roomState.currentQuestionIndex) return;
+//       if (roomState.players[socket.id].answered) return;
+
+//       const quiz = roomState.quiz;
+//       const question = quiz.subTheme.questions[questionIndex];
+//       const username = socket.user.username;
+//       const correct = answer === question.answer;
+
+//       if (!activeGames[roomId].scores[username]) {
+//         activeGames[roomId].scores[username] = 0;
+//       }
+//       if (correct) {
+//         activeGames[roomId].scores[username]++;
+//       }
+
+//       // Marquer comme répondu
+//       roomState.players[socket.id].answered = true;
+
+//       // Envoyer un feedback immédiat à chaque joueur
+//       socket.emit("answer_feedback", {
+//         correctAnswer: question.answer,
+//         yourAnswer: answer,
+//         correct,
+//         yourScore: activeGames[roomId].scores[username]
+//       });
+
+//       // Vérifier si tout le monde a répondu
+//       const allAnswered = Object.values(roomState.players).every(p => p.answered);
+//       if (allAnswered) {
+//         clearTimeout(roomState.timeoutId); // Stop timer
+//         roomState.currentQuestionIndex++;
+//         sendNextQuestion(io, roomId); // Envoie suivante
+//       }
+//     });
+
+//     socket.on("disconnect", () => {
+//       console.log(`Déconnexion : ${socket.id}`);
+//       for (const catId in waitingRoomsByCategory) {
+//         waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(p => p.socket.id !== socket.id);
+//       }
+//     });
+//   });
+// }
+
+// function sendNextQuestion(io, roomId) {
+//   const roomState = gameStateByRoom[roomId];
+//   if (!roomState) return;
+
+//   const index = roomState.currentQuestionIndex;
+//   const quiz = roomState.quiz;
+
+//   if (index >= quiz.subTheme.questions.length) {
+//     io.to(roomId).emit("game_over", {
+//       scores: activeGames[roomId].scores
+//     });
+//     delete gameStateByRoom[roomId];
+//     return;
+//   }
+
+//   // Reset answered state
+//   Object.keys(roomState.players).forEach(id => {
+//     roomState.players[id].answered = false;
+//   });
+
+//   const question = quiz.subTheme.questions[index];
+
+//   io.to(roomId).emit("new_question", {
+//     question,
+//     questionIndex: index
+//   });
+
+//   roomState.timeoutId = setTimeout(() => {
+//     // Si tout le monde n’a pas répondu, on passe à la suite
+//     roomState.currentQuestionIndex++;
+//     sendNextQuestion(io, roomId);
+//   }, 10000);
+// }
+
+// module.exports = socketGame;
