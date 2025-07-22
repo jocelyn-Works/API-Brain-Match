@@ -26,7 +26,7 @@ module.exports.checkUser = async (req, res, next) => {
     next();
   } catch (err) {
     res.locals.user = null;
-    res.cookie("jwt", "", { maxAge: 1 }); // Efface cookie
+    res.cookie("jwt", "", { maxAge: 1 }); 
     next();
   }
 };
@@ -45,7 +45,9 @@ module.exports.requireAuth = async (req, res, next) => {
   try {
     const decodedToken = await verifyToken(token, process.env.TOKEN_SECRET);
     console.log(decodedToken.id);
-    // Tu peux stocker l'utilisateur ou le token décodé dans res.locals pour la suite
+    
+
+    
     res.locals.userId = decodedToken.id;
     next();
   } catch (err) {
