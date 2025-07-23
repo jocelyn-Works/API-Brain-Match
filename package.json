@@ -9,6 +9,7 @@
   "author": "Z B J",
   "license": "ISC",
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "bcrypt": "^6.0.0",
     "chess.js": "^1.4.0",
     "cors": "^2.8.5",
