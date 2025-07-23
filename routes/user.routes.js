@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const authController = require('../controllers/auth.controller.js');
+
 const userController = require('../controllers/user.controller.js');
 const uploadController = require('../controllers/upload.controller.js');
 
@@ -7,15 +7,7 @@ const multer = require('multer');
 const storage = multer.memoryStorage(); // Stocke le fichier en mémoire
 const upload = multer({ storage: storage });
 
-////// authentification /////
-// register
-router.post("/register", authController.signUp);
-// login 
-router.post("/login", authController.signIn);
 
-router.post("/logout", authController.logout);
-
-/////////////////////////////////////////////////
 
 // upload
 router.post("/upload", upload.single('file'), uploadController.uploadProfil);

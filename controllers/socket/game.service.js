@@ -40,7 +40,7 @@ function socketGame(io) {
 
       waitingRoomsByCategory[categoryId].push({ socket, userData: fullData });
 
-      if (waitingRoomsByCategory[categoryId].length === 2) {
+      if (waitingRoomsByCategory[categoryId].length >= 2) {
         const player1 = waitingRoomsByCategory[categoryId].shift();
         const player2 = waitingRoomsByCategory[categoryId].shift();
 

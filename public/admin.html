@@ -17,24 +17,32 @@
             <form id="categoryForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block mb-1 font-medium text-gray-700">Thème</label>
-                    <input type="text" name="theme" required class="w-full p-3 border border-gray-300 rounded" placeholder="Ex: Histoire" />
+                    <input type="text" name="theme" required class="w-full p-3 border border-gray-300 rounded"
+                        placeholder="Ex: Histoire" />
                 </div>
                 <div>
                     <label class="block mb-1 font-medium text-gray-700">Logo (image)</label>
-                    <input type="file" name="logo" id="logoInput" accept="image/*" required class="w-full p-2 border rounded" />
-                    <img id="logoPreview" src="" alt="Prévisualisation logo" class="mt-2 h-20 hidden object-contain rounded" />
+                    <input type="file" name="logo" id="logoInput" accept="image/*" required
+                        class="w-full p-2 border rounded" />
+                    <img id="logoPreview" src="" alt="Prévisualisation logo"
+                        class="mt-2 h-20 hidden object-contain rounded" />
                 </div>
                 <div class="md:col-span-2">
                     <label class="block mb-1 font-medium text-gray-700">Description</label>
-                    <textarea name="description" required class="w-full p-3 border border-gray-300 rounded" placeholder="Brève description du thème..."></textarea>
+                    <textarea name="description" required class="w-full p-3 border border-gray-300 rounded"
+                        placeholder="Brève description du thème..."></textarea>
                 </div>
                 <div>
                     <label class="block mb-1 font-medium text-gray-700">Image principale</label>
-                    <input type="file" name="image" id="imageInput" accept="image/*" required class="w-full p-2 border rounded" />
-                    <img id="imagePreview" src="" alt="Prévisualisation image" class="mt-2 h-20 hidden object-cover rounded" />
+                    <input type="file" name="image" id="imageInput" accept="image/*" required
+                        class="w-full p-2 border rounded" />
+                    <img id="imagePreview" src="" alt="Prévisualisation image"
+                        class="mt-2 h-20 hidden object-cover rounded" />
                 </div>
                 <div class="md:col-span-2">
-                    <button type="submit" class="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 transition w-full">Créer la catégorie</button>
+                    <button type="submit"
+                        class="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 transition w-full">Créer la
+                        catégorie</button>
                 </div>
             </form>
         </section>
@@ -45,28 +53,47 @@
             <form id="questionForm" class="space-y-6">
                 <div>
                     <label class="block text-lg font-medium mb-1">Choisir une catégorie</label>
-                    <select id="categorySelect" name="categoryId" required class="w-full p-3 border border-gray-300 rounded">
+                    <select id="categorySelect" name="categoryId" required
+                        class="w-full p-3 border border-gray-300 rounded">
                         <option value="">-- Sélectionner une catégorie --</option>
                     </select>
                 </div>
                 <div>
-                    <input type="text" name="subThemeTitle" placeholder="Sous-thème" required class="w-full p-3 border border-gray-300 rounded" />
+                    <input type="text" name="subThemeTitle" placeholder="Sous-thème" required
+                        class="w-full p-3 border border-gray-300 rounded" />
                 </div>
                 <div id="questionsContainer" class="space-y-6"></div>
                 <div class="flex gap-4">
-                    <button type="button" id="addQuestionBtn" class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition">+ Ajouter une question</button>
-                    <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">Créer les questions</button>
+                    <button type="button" id="addQuestionBtn"
+                        class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition">+ Ajouter une
+                        question</button>
+                    <button type="submit"
+                        class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">Créer les
+                        questions</button>
                 </div>
             </form>
         </section>
     </div>
 
     <script>
+
+        // Vérifie si un token est présent
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+            // Si pas connecté, redirige vers login
+            // window.location.href = "/home.html";
+        }
+
         const categorySelect = document.getElementById("categorySelect");
 
         async function loadCategories() {
             try {
-                const res = await fetch("http://127.0.0.1:3000/api/quiz/category");
+                const res = await fetch("/api/quiz/category", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
                 const categories = await res.json();
                 categories.forEach(cat => {
                     const opt = document.createElement("option");
@@ -108,7 +135,10 @@
         document.getElementById("categoryForm").addEventListener("submit", async function (e) {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const res = await fetch("http://localhost:3000/api/quiz/category", {
+            const res = await fetch("/api/quiz/category", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
                 method: "POST",
                 body: formData
             });
@@ -196,7 +226,10 @@
 
             formData.append("questions", JSON.stringify(questionsArray));
 
-            const res = await fetch("http://localhost:3000/api/quiz/question", {
+            const res = await fetch("/api/quiz/question", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                },
                 method: "POST",
                 body: formData
             });
