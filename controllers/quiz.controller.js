@@ -122,9 +122,9 @@ module.exports.getAllCategory = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     const categoriesWithoutQuestions = categories.map((category) => {
-     
+
       const cleanedSubThemes = category.subThemes?.map((subTheme) => ({
-        title: subTheme.title 
+        title: subTheme.title
       })) || [];
 
       return {

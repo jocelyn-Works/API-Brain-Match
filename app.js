@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*'}
+  cors: { origin: '*' }
 });
 
 // midelware client
@@ -47,7 +47,12 @@ app.use("/api/user", userRoutes);
 app.use("/api/quiz", quizRoutes);
 
 const socketGame = require("./controllers/socket/game.service");
+
+// const socketChessGame = require("./controllers/socket/chess.service"); // echec
+
 socketGame(io);
+
+// socketChessGame(io); // service échecs
 
 // server
 server.listen(process.env.PORT, () => {
