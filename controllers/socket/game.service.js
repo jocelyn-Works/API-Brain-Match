@@ -203,9 +203,7 @@ function socketGame(io) {
         setTimeout(() => {
           sendNextQuestion(io, roomId);
         }, 2000);
-      } else {
-        console.log("joueurs n'ont pas rep");
-      }
+      } 
     });
 
     socket.on("disconnect", () => {
