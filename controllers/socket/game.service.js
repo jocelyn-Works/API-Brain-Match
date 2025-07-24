@@ -1,4 +1,7 @@
-const { getRandomSubThemeQuestions, updateUserScore } = require("../../controllers/socket/quiz.service");
+const {
+  getRandomSubThemeQuestions,
+  updateUserScore,
+} = require("../../controllers/socket/quiz.service");
 const UserModel = require("../../models/user.model");
 const jwt = require("jsonwebtoken");
 
@@ -19,19 +22,78 @@ function socketGame(io) {
   });
 
   io.on("connection", (socket) => {
+    
+    // SOLO //
+    socket.on("join_game_solo", async ({ categoryId }) => {
+      if (!categoryId)
+        return socket.emit("error", { message: "Catégorie manquante" });
 
-    socket.on("join_game", async ({ categoryId }) => {
-      if (!categoryId) return socket.emit("error", { message: "Catégorie manquante" });
+      const user = await UserModel.findById(socket.user.id).select(
+        "username picture score"
+      );
+      if (!user)
+        return socket.emit("error", { message: "Utilisateur introuvable" });
 
-      const user = await UserModel.findById(socket.user.id).select("username picture score");
-      if (!user) return socket.emit("error", { message: "Utilisateur introuvable" });
+      const roomId = `solo-${socket.id}`;
+      socket.join(roomId);
+
+      const quiz = await getRandomSubThemeQuestions(categoryId);
+      if (!quiz || !quiz.subTheme.questions.length) {
+        socket.emit("error", { message: "Aucune question disponible." });
+        return;
+      }
+
+      activeGames[roomId] = {
+        quiz,
+        scores: {
+          [user.username]: 0,
+        },
+      };
+
+      gameStateByRoom[roomId] = {
+        players: {
+          [socket.id]: {
+            answered: false,
+            username: user.username,
+            _id: user._id,
+          },
+        },
+        currentQuestionIndex: 0,
+        totalQuestions: quiz.subTheme.questions.length,
+        quiz,
+        timeoutId: null,
+        correctAnswers: quiz.subTheme.questions.map((q) => q.answer),
+      };
+
+      socket.emit("start_game", {
+        roomId,
+        players: [user],
+        message: "La partie solo commence !",
+        question: quiz.subTheme.questions[0],
+        questionIndex: 0,
+        totalQuestions: quiz.subTheme.questions.length,
+      });
+
+      startQuestionTimer(io, roomId);
+    });
+
+    // VERSUS //
+    socket.on("join_game_versus", async ({ categoryId }) => {
+      if (!categoryId)
+        return socket.emit("error", { message: "Catégorie manquante" });
+
+      const user = await UserModel.findById(socket.user.id).select(
+        "username picture score"
+      );
+      if (!user)
+        return socket.emit("error", { message: "Utilisateur introuvable" });
 
       const fullData = {
         _id: user._id,
         username: user.username,
         picture: user.picture,
         score: user.score,
-        categoryId
+        categoryId,
       };
 
       if (!waitingRoomsByCategory[categoryId]) {
@@ -50,7 +112,9 @@ function socketGame(io) {
 
         const quiz = await getRandomSubThemeQuestions(categoryId);
         if (!quiz || !quiz.subTheme.questions.length) {
-          io.to(roomId).emit("error", { message: "Aucune question disponible." });
+          io.to(roomId).emit("error", {
+            message: "Aucune question disponible.",
+          });
           return;
         }
 
@@ -58,8 +122,8 @@ function socketGame(io) {
           quiz,
           scores: {
             [player1.userData.username]: 0,
-            [player2.userData.username]: 0
-          }
+            [player2.userData.username]: 0,
+          },
         };
 
         gameStateByRoom[roomId] = {
@@ -67,19 +131,19 @@ function socketGame(io) {
             [player1.socket.id]: {
               answered: false,
               username: player1.userData.username,
-              _id: player1.userData._id
+              _id: player1.userData._id,
             },
             [player2.socket.id]: {
               answered: false,
               username: player2.userData.username,
-              _id: player2.userData._id
-            }
+              _id: player2.userData._id,
+            },
           },
           currentQuestionIndex: 0,
           totalQuestions: quiz.subTheme.questions.length,
           quiz,
           timeoutId: null,
-          correctAnswers: quiz.subTheme.questions.map(q => q.answer)
+          correctAnswers: quiz.subTheme.questions.map((q) => q.answer),
         };
 
         io.to(roomId).emit("start_game", {
@@ -88,7 +152,7 @@ function socketGame(io) {
           message: "La partie commence !",
           question: quiz.subTheme.questions[0],
           questionIndex: 0,
-          totalQuestions: quiz.subTheme.questions.length
+          totalQuestions: quiz.subTheme.questions.length,
         });
 
         startQuestionTimer(io, roomId);
@@ -97,13 +161,19 @@ function socketGame(io) {
 
     socket.on("player_answer", ({ roomId, questionIndex, answer }) => {
       const roomState = gameStateByRoom[roomId];
-      if (!roomState || questionIndex !== roomState.currentQuestionIndex) return;
-      if (!roomState.players[socket.id] || roomState.players[socket.id].answered) return;
+      if (!roomState || questionIndex !== roomState.currentQuestionIndex)
+        return;
+      if (
+        !roomState.players[socket.id] ||
+        roomState.players[socket.id].answered
+      )
+        return;
 
       const playerInfo = roomState.players[socket.id];
       const username = playerInfo.username;
       const correctAnswer = roomState.correctAnswers[questionIndex];
-      const correct = answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+      const correct =
+        answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
 
       if (!activeGames[roomId].scores[username]) {
         activeGames[roomId].scores[username] = 0;
@@ -119,10 +189,12 @@ function socketGame(io) {
         correctAnswer,
         yourAnswer: answer,
         correct,
-        yourScore: activeGames[roomId].scores[username]
+        yourScore: activeGames[roomId].scores[username],
       });
 
-      const allAnswered = Object.values(roomState.players).every(p => p.answered);
+      const allAnswered = Object.values(roomState.players).every(
+        (p) => p.answered
+      );
 
       if (allAnswered) {
         // Les deux joueurs ont répondu → on annule le timer et on avance rapidement
@@ -131,9 +203,8 @@ function socketGame(io) {
         setTimeout(() => {
           sendNextQuestion(io, roomId);
         }, 2000);
-
       } else {
-        console.log("joueurs n'ont pas rep")
+        console.log("joueurs n'ont pas rep");
       }
     });
 
@@ -142,14 +213,16 @@ function socketGame(io) {
 
       // Retirer des salles d'attente
       for (const catId in waitingRoomsByCategory) {
-        waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(p => p.socket.id !== socket.id);
+        waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(
+          (p) => p.socket.id !== socket.id
+        );
       }
 
       // Gérer l'abandon en jeu
       for (const roomId in gameStateByRoom) {
         if (gameStateByRoom[roomId].players[socket.id]) {
           io.to(roomId).emit("opponent_left", {
-            message: "Votre adversaire a quitté la partie."
+            message: "Votre adversaire a quitté la partie.",
           });
 
           clearTimeout(gameStateByRoom[roomId].timeoutId);
@@ -191,35 +264,38 @@ async function sendNextQuestion(io, roomId) {
   // console.log(index)
 
   if (index >= quiz.subTheme.questions.length) {
-
     const finalScores = activeGames[roomId].scores;
 
-    io.to(roomId).emit("game_over", {
-      scores: finalScores
-    });
+    const isSolo = Object.keys(gameStateByRoom[roomId].players).length === 1;
+
+    io.to(roomId).emit(
+      "game_over",
+      isSolo
+        ? {
+            score: finalScores[Object.keys(finalScores)[0]],
+            message: "Fin de la partie solo",
+          }
+        : {
+            scores: finalScores,
+          }
+    );
 
     clearTimeout(roomState.timeoutId);
     delete gameStateByRoom[roomId];
     delete activeGames[roomId];
 
-    // test
-    // io.in(roomId).socketsLeave(roomId);
-    // io.in(roomId).disconnectSockets(true);
-
-    // resetRoomState(io, roomId);
-
     return;
   }
 
   // Réinitialiser le statut des joueurs
-  Object.keys(roomState.players).forEach(id => {
+  Object.keys(roomState.players).forEach((id) => {
     roomState.players[id].answered = false;
   });
 
   const fullQuestion = quiz.subTheme.questions[index];
   io.to(roomId).emit("new_question", {
     question: fullQuestion,
-    questionIndex: index
+    questionIndex: index,
   });
 
   startQuestionTimer(io, roomId);
