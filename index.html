@@ -67,231 +67,240 @@
     </div>
   </div>
 
-    <script>
+  <script>
 
-      document.getElementById("btnLogin").onclick = async () => {
-        const identifier = document.getElementById("loginId").value.trim();
-        const password = document.getElementById("loginPassword").value;
+    document.getElementById("btnLogin").onclick = async () => {
+      const identifier = document.getElementById("loginId").value.trim();
+      const password = document.getElementById("loginPassword").value;
 
-        if (!identifier || !password) {
-          log("❌ Identifiant ou mot de passe manquant.");
-          return;
-        }
-
-        try {
-          const res = await fetch("http://localhost:3000/api/user/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identifier, password }),
-          });
-
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message || "Erreur de connexion.");
-          }
-
-          const data = await res.json();
-          const { userId, token } = data;
-
-          // Auto-remplir le champ token utilisé pour le jeu
-          document.getElementById("tokenInput").value = token;
-
-          // Afficher les infos auth
-          document.getElementById("authInfo").classList.remove("hidden");
-          document.getElementById("authUserId").textContent = userId;
-
-          log("✅ Connexion réussie. Token ok !");
-        } catch (err) {
-          log("❌ Connexion échouée : " + err.message);
-        }
-      };
-
-      const logEl = document.getElementById("log");
-      const questionCard = document.getElementById("questionCard");
-      const questionText = document.getElementById("questionText");
-      const answerButtons = document.getElementById("answerButtons");
-      const timerDisplay = document.getElementById("timer");
-      const scoreDisplay = document.getElementById("scoreDisplay");
-      const categorySelect = document.getElementById("categoryId");
-
-      let socket;
-      let questions = [];
-      let currentQuestionIndex = 0;
-      let timer;
-      let timeLeft = 10;
-      let score = 0;
-      let roomId;
-      let hasAnswered = false;
-
-      function log(msg) {
-        logEl.textContent += msg + "\n";
-        logEl.scrollTop = logEl.scrollHeight;
-        console.log(msg);
+      if (!identifier || !password) {
+        log("❌ Identifiant ou mot de passe manquant.");
+        return;
       }
 
-      async function loadCategories() {
-        try {
-          const res = await fetch("http://localhost:3000/api/quiz/category");
-          const categories = await res.json();
-          categorySelect.innerHTML =
-            '<option disabled selected>Choisis une catégorie</option>';
+      try {
+        const res = await fetch("http://localhost:3000/api/user/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, password }),
+        });
 
-          categories.forEach((cat) => {
-            const opt = document.createElement("option");
-            opt.value = cat._id;
-            opt.textContent = cat.theme;
-            categorySelect.appendChild(opt);
-          });
-        } catch (err) {
-          log("❌ Erreur de chargement des catégories");
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "Erreur de connexion.");
         }
-      }
 
-      function startTimer() {
-        timeLeft = 10;
+        const data = await res.json();
+        const { userId, token } = data;
+
+        // Auto-remplir le champ token utilisé pour le jeu
+        document.getElementById("tokenInput").value = token;
+
+        // Afficher les infos auth
+        document.getElementById("authInfo").classList.remove("hidden");
+        document.getElementById("authUserId").textContent = userId;
+
+        log("✅ Connexion réussie. Token ok !");
+      } catch (err) {
+        log("❌ Connexion échouée : " + err.message);
+      }
+    };
+
+    const logEl = document.getElementById("log");
+    const questionCard = document.getElementById("questionCard");
+    const questionText = document.getElementById("questionText");
+    const answerButtons = document.getElementById("answerButtons");
+    const timerDisplay = document.getElementById("timer");
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const categorySelect = document.getElementById("categoryId");
+
+    let socket;
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let timer;
+    let timeLeft = 10;
+    let score = 0;
+    let roomId;
+    let hasAnswered = false;
+
+    function log(msg) {
+      logEl.textContent += msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(msg);
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch("http://localhost:3000/api/quiz/category");
+        const categories = await res.json();
+        categorySelect.innerHTML =
+          '<option disabled selected>Choisis une catégorie</option>';
+
+        categories.forEach((cat) => {
+          const opt = document.createElement("option");
+          opt.value = cat._id;
+          opt.textContent = cat.theme;
+          categorySelect.appendChild(opt);
+        });
+      } catch (err) {
+        log("❌ Erreur de chargement des catégories");
+      }
+    }
+
+    function startTimer() {
+      timeLeft = 10;
+      timerDisplay.textContent = `Temps : ${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
         timerDisplay.textContent = `Temps : ${timeLeft}s`;
-        timer = setInterval(() => {
-          timeLeft--;
-          timerDisplay.textContent = `Temps : ${timeLeft}s`;
-          if (timeLeft <= 0) {
-            clearInterval(timer);
-            if (!hasAnswered) {
-              hasAnswered = true;
-              log("⏰ Temps écoulé, réponse non envoyée.");
-              socket.emit("player_answer", {
-                roomId,
-                questionIndex: currentQuestionIndex,
-                answer: null,
-                correct: false
-              });
-              Array.from(answerButtons.children).forEach(b => b.disabled = true);
-            }
-          }
-        }, 1000);
-      }
-
-      function showQuestion() {
-        const q = questions[currentQuestionIndex];
-        hasAnswered = false;
-
-        let html = `Question ${currentQuestionIndex + 1}: ${q.question}`;
-        if (q.image) {
-          html += `<div class="mt-2"><img src="${q.image}" class="max-w-full h-48 object-contain rounded border mt-2" /></div>`;
-        }
-
-        questionText.innerHTML = html;
-        answerButtons.innerHTML = '';
-        questionCard.style.display = 'block';
-        startTimer();
-
-        q.options.forEach((a, i) => {
-          const btn = document.createElement("button");
-          btn.textContent = a;
-          btn.className =
-            "px-4 py-2 bg-white border rounded hover:bg-indigo-100 transition text-left";
-          btn.onclick = () => {
-            if (hasAnswered) return;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (!hasAnswered) {
             hasAnswered = true;
-            clearInterval(timer);
-
-            const correct = a === q.answer;
-            if (correct) {
-              score++;
-              updateScore();
-              log(`✅ Bonne réponse : ${a}`);
-              btn.classList.add("bg-green-200", "border-green-500");
-            } else {
-              log(`❌ Mauvaise réponse. Réponse correcte : ${q.answer}`);
-              btn.classList.add("bg-red-200", "border-red-500");
-            }
-
-            // Désactiver tous les boutons
-            Array.from(answerButtons.children).forEach(b => b.disabled = true);
-
+            log("⏰ Temps écoulé, réponse non envoyée.");
             socket.emit("player_answer", {
               roomId,
               questionIndex: currentQuestionIndex,
-              answer: a,
-              correct
+              answer: null,
+              correct: false
             });
-          };
-          answerButtons.appendChild(btn);
-        });
-      }
-
-      function showNextQuestion() {
-        currentQuestionIndex++;
-        if (currentQuestionIndex < questions.length) {
-          showQuestion();
-        } else {
-          log("🏁 Fin du quiz !");
-          questionCard.style.display = "none";
+            Array.from(answerButtons.children).forEach(b => b.disabled = true);
+          }
         }
+      }, 1000);
+    }
+
+    function showQuestion() {
+      const q = questions[currentQuestionIndex];
+      hasAnswered = false;
+
+      let html = `Question ${currentQuestionIndex + 1}: ${q.question}`;
+      if (q.image) {
+        html += `<div class="mt-2"><img src="${q.image}" class="max-w-full h-48 object-contain rounded border mt-2" /></div>`;
       }
 
-      function updateScore() {
-        scoreDisplay.textContent = `Score : ${score}`;
+      questionText.innerHTML = html;
+      answerButtons.innerHTML = '';
+      questionCard.style.display = 'block';
+      startTimer();
+
+      q.options.forEach((a, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = a;
+        btn.className =
+          "px-4 py-2 bg-white border rounded hover:bg-indigo-100 transition text-left";
+        btn.onclick = () => {
+          if (hasAnswered) return;
+          hasAnswered = true;
+          clearInterval(timer);
+
+          const correct = a === q.answer;
+          if (correct) {
+            score++;
+            updateScore();
+            log(`✅ Bonne réponse : ${a}`);
+            btn.classList.add("bg-green-200", "border-green-500");
+          } else {
+            log(`❌ Mauvaise réponse. Réponse correcte : ${q.answer}`);
+            btn.classList.add("bg-red-200", "border-red-500");
+          }
+
+          // Désactiver tous les boutons
+          Array.from(answerButtons.children).forEach(b => b.disabled = true);
+
+          socket.emit("player_answer", {
+            roomId,
+            questionIndex: currentQuestionIndex,
+            answer: a,
+            correct
+          });
+        };
+        answerButtons.appendChild(btn);
+      });
+    }
+
+    function showNextQuestion() {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) {
+        showQuestion();
+      } else {
+        log("🏁 Fin du quiz !");
+        questionCard.style.display = "none";
+      }
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = `Score : ${score}`;
+    }
+
+    document.getElementById("btnConnect").onclick = () => {
+      const playerId = document.getElementById("authUserId").textContent.trim();
+      const token = document.getElementById("tokenInput").value.trim();
+      const categoryId = categorySelect.value;
+
+      if (!playerId || !categoryId || !token) {
+        log("❌ Tu dois être connecté et avoir choisi une catégorie.");
+        return;
       }
 
-      document.getElementById("btnConnect").onclick = () => {
-        const playerId = document.getElementById("authUserId").textContent.trim();
-        const token = document.getElementById("tokenInput").value.trim();
-        const categoryId = categorySelect.value;
+      socket = io("http://localhost:3000", {
+        transportOptions: {
+          polling: {
+            extraHeaders: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      });
 
-        if (!playerId || !categoryId || !token) {
-          log("❌ Tu dois être connecté et avoir choisi une catégorie.");
+
+      socket.on("connect", () => {
+        log("✅ Connecté au serveur avec id: " + socket.id);
+
+        // ✅ Envoie bien le token dans l'événement join_game
+        socket.emit("join_game", {
+          token,
+          categoryId,
+        });
+
+        log("🕹️ En attente d’un adversaire dans la catégorie sélectionnée...");
+      });
+
+      socket.on("start_game", (data) => {
+        const { roomId: receivedRoomId, players, quiz } = data;
+
+        if (!quiz?.subTheme?.questions?.length) {
+          log("❌ Aucune question reçue.");
           return;
         }
 
-        socket = io("http://localhost:3000"); // pas besoin d'envoyer auth.token ici dans TON cas
+        questions = quiz.subTheme.questions;
+        currentQuestionIndex = 0;
+        score = 0;
+        updateScore();
 
-        socket.on("connect", () => {
-          log("✅ Connecté au serveur avec id: " + socket.id);
+        log(
+          `🎯 Partie lancée dans ${roomId} contre ${players
+            .map((p) => p.username)
+            .join(" vs ")} !`
+        );
+        showQuestion();
+        roomId = receivedRoomId; // stocker la room globale
 
-          // ✅ Envoie bien le token dans l'événement join_game
-          socket.emit("join_game", {
-            token,
-            categoryId,
-          });
+      });
 
-          log("🕹️ En attente d’un adversaire dans la catégorie sélectionnée...");
-        });
+      socket.on("error", (err) => {
+        log(`❌ Erreur : ${err.message}`);
+      });
+      socket.on("next_question", () => {
+        showNextQuestion();
+      });
 
-        socket.on("start_game", (data) => {
-          const { roomId: receivedRoomId, players, quiz } = data;
-
-          if (!quiz?.subTheme?.questions?.length) {
-            log("❌ Aucune question reçue.");
-            return;
-          }
-
-          questions = quiz.subTheme.questions;
-          currentQuestionIndex = 0;
-          score = 0;
-          updateScore();
-
-          log(
-            `🎯 Partie lancée dans ${roomId} contre ${players
-              .map((p) => p.username)
-              .join(" vs ")} !`
-          );
-          showQuestion();
-          roomId = receivedRoomId; // stocker la room globale
-
-        });
-
-        socket.on("error", (err) => {
-          log(`❌ Erreur : ${err.message}`);
-        });
-        socket.on("next_question", () => {
-          showNextQuestion();
-        });
-
-      };
+    };
 
 
-      loadCategories();
-    </script>
+    loadCategories();
+  </script>
 </body>
 
 

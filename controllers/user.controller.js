@@ -1,6 +1,7 @@
 const UserModel = require("../models/user.model");
 const ObjectID = require("mongoose").Types.ObjectId;
 
+
 // all users
 module.exports.getAllUsers = async (req, res) => {
   try {
@@ -38,7 +39,7 @@ module.exports.getOneUser = async (req, res) => {
       return res.status(404).send("Utilisateur non trouvé.");
     }
 
-    // URL complète pour l'image
+    // URL complète pour l'image + info user
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const userWithFullPictureUrl = {
       ...user._doc,

@@ -1,5 +1,6 @@
 // services/quiz.service.js
 const Category = require("../../models/quiz.model");
+const UserModel = require("../../models/user.model")
 
 async function getRandomSubThemeQuestions(categoryId) {
   const category = await Category.findById(categoryId).lean();
@@ -7,9 +8,9 @@ async function getRandomSubThemeQuestions(categoryId) {
     return null;
 
   const randomSubTheme =
-      category.subThemes[Math.floor(Math.random() * category.subThemes.length)];
+    category.subThemes[Math.floor(Math.random() * category.subThemes.length)];
 
-  const baseUrl = `http://localhost:${process.env.PORT}`; 
+  const baseUrl = `http://localhost:${process.env.PORT}`;
 
   const questionsWithFullPictureUrl = randomSubTheme.questions.map((q) => ({
     _id: q._id,
@@ -26,12 +27,24 @@ async function getRandomSubThemeQuestions(categoryId) {
     },
     subTheme: {
       title: randomSubTheme.title,
-      questions:  questionsWithFullPictureUrl ,
-        
+      questions: questionsWithFullPictureUrl,
+
     },
   };
 }
 
+async function updateUserScore(userId, pointsToAdd) {
+  try {
+    await UserModel.findByIdAndUpdate(
+      userId,
+      { $inc: { score: pointsToAdd } }, // incrémente directement
+      { new: true }
+    );
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour du score :", err);
+  }
+}
+
 module.exports = {
-  getRandomSubThemeQuestions,
+  getRandomSubThemeQuestions, updateUserScore,
 };

@@ -1,209 +1,304 @@
-const { getRandomSubThemeQuestions } = require("../../controllers/socket/quiz.service");
-
-const UserModel = require("../../models/user.model"); // adapte le chemin si besoin
-const jwt = require('jsonwebtoken')
+const {
+  getRandomSubThemeQuestions,
+  updateUserScore,
+} = require("../../controllers/socket/quiz.service");
+const UserModel = require("../../models/user.model");
+const jwt = require("jsonwebtoken");
 
 const waitingRoomsByCategory = {};
 const activeGames = {};
 const gameStateByRoom = {};
 
-
 function socketGame(io) {
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    try {
+      const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+      socket.user = decoded;
+      next();
+    } catch (err) {
+      return next(new Error("Token invalide"));
+    }
+  });
+
   io.on("connection", (socket) => {
+    
+    // SOLO //
+    socket.on("join_game_solo", async ({ categoryId }) => {
+      if (!categoryId)
+        return socket.emit("error", { message: "Catégorie manquante" });
 
-    socket.on("join_game", async ({ token, categoryId }) => {
-
-      if (!token || !categoryId) {
-        return socket.emit("error", { message: "Token ou catégorie manquants" });
-      }
-
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-      } catch (err) {
-        return socket.emit("error", { message: "Token invalide" });
-      }
-
-      const user = await UserModel.findById(decoded.id).select("username picture score");
-      if (!user) {
+      const user = await UserModel.findById(socket.user.id).select(
+        "username picture score"
+      );
+      if (!user)
         return socket.emit("error", { message: "Utilisateur introuvable" });
+
+      const roomId = `solo-${socket.id}`;
+      socket.join(roomId);
+
+      const quiz = await getRandomSubThemeQuestions(categoryId);
+      if (!quiz || !quiz.subTheme.questions.length) {
+        socket.emit("error", { message: "Aucune question disponible." });
+        return;
       }
+
+      activeGames[roomId] = {
+        quiz,
+        scores: {
+          [user.username]: 0,
+        },
+      };
+
+      gameStateByRoom[roomId] = {
+        players: {
+          [socket.id]: {
+            answered: false,
+            username: user.username,
+            _id: user._id,
+          },
+        },
+        currentQuestionIndex: 0,
+        totalQuestions: quiz.subTheme.questions.length,
+        quiz,
+        timeoutId: null,
+        correctAnswers: quiz.subTheme.questions.map((q) => q.answer),
+      };
+
+      socket.emit("start_game", {
+        roomId,
+        players: [user],
+        message: "La partie solo commence !",
+        question: quiz.subTheme.questions[0],
+        questionIndex: 0,
+        totalQuestions: quiz.subTheme.questions.length,
+      });
+
+      startQuestionTimer(io, roomId);
+    });
+
+    // VERSUS //
+    socket.on("join_game_versus", async ({ categoryId }) => {
+      if (!categoryId)
+        return socket.emit("error", { message: "Catégorie manquante" });
+
+      const user = await UserModel.findById(socket.user.id).select(
+        "username picture score"
+      );
+      if (!user)
+        return socket.emit("error", { message: "Utilisateur introuvable" });
 
       const fullData = {
         _id: user._id,
         username: user.username,
         picture: user.picture,
         score: user.score,
-        categoryId
+        categoryId,
       };
 
-      // ajout joueur ds room
       if (!waitingRoomsByCategory[categoryId]) {
         waitingRoomsByCategory[categoryId] = [];
       }
+
       waitingRoomsByCategory[categoryId].push({ socket, userData: fullData });
 
-      // lancement game
-      if (waitingRoomsByCategory[categoryId].length === 2) {
+      if (waitingRoomsByCategory[categoryId].length >= 2) {
         const player1 = waitingRoomsByCategory[categoryId].shift();
         const player2 = waitingRoomsByCategory[categoryId].shift();
 
-        // creation room ID / 2 joueurs ds la meme room donc ds le meme objet
         const roomId = `room-${player1.socket.id}-${player2.socket.id}`;
         player1.socket.join(roomId);
         player2.socket.join(roomId);
 
-        const quiz = await getRandomSubThemeQuestions(categoryId); // recupération des questions en fonction de la categorie
-
-        // si quiz introuvable
-        if (!quiz) {
-          io.to(roomId).emit("error", { message: "Aucune question pour cette catégorie." });
+        const quiz = await getRandomSubThemeQuestions(categoryId);
+        if (!quiz || !quiz.subTheme.questions.length) {
+          io.to(roomId).emit("error", {
+            message: "Aucune question disponible.",
+          });
           return;
         }
 
-        // initialisation du score a 0
         activeGames[roomId] = {
           quiz,
           scores: {
             [player1.userData.username]: 0,
-            [player2.userData.username]: 0
-          }
+            [player2.userData.username]: 0,
+          },
         };
-
-        // event start game / recupere bien les users connectes ???
-        io.to(roomId).emit("start_game", {
-          roomId,
-          players: [player1.userData, player2.userData],
-          message: "La partie commence !",
-          quiz
-        });
 
         gameStateByRoom[roomId] = {
           players: {
-            [player1.socket.id]: { answered: false },
-            [player2.socket.id]: { answered: false }
+            [player1.socket.id]: {
+              answered: false,
+              username: player1.userData.username,
+              _id: player1.userData._id,
+            },
+            [player2.socket.id]: {
+              answered: false,
+              username: player2.userData.username,
+              _id: player2.userData._id,
+            },
           },
           currentQuestionIndex: 0,
           totalQuestions: quiz.subTheme.questions.length,
           quiz,
-          timeoutId: null
+          timeoutId: null,
+          correctAnswers: quiz.subTheme.questions.map((q) => q.answer),
         };
-        // 10 secondes pour répondre à la première question
-        gameStateByRoom[roomId].timeoutId = setTimeout(() => {
-          io.to(roomId).emit("next_question");
-          resetRoomState(io, roomId);
-        }, 10000);
 
-
-
-        // juste pr afficher les questions server side
-        let questions = quiz.subTheme.questions;
-
-        questions.forEach(element => {
-          console.log(element)
-
+        io.to(roomId).emit("start_game", {
+          roomId,
+          players: [player1.userData, player2.userData],
+          message: "La partie commence !",
+          question: quiz.subTheme.questions[0],
+          questionIndex: 0,
+          totalQuestions: quiz.subTheme.questions.length,
         });
 
-        console.log(`Partie démarrée dans ${roomId} pour la catégorie ${categoryId}`);
+        startQuestionTimer(io, roomId);
       }
     });
 
-    const answeredQuestions = {}; // { roomId: { questionIndex: { username: answer } } }
-
-    // quand un joueur repond a une question
-    socket.on('player_answer', (data) => {
-
-      // def des data recup
-      const { roomId, questionIndex, answer, username } = data;
-
-      // stockage des reponses
-      if (!answeredQuestions[roomId]) answeredQuestions[roomId] = {};
-      if (!answeredQuestions[roomId][questionIndex]) answeredQuestions[roomId][questionIndex] = {};
-      answeredQuestions[roomId][questionIndex][username] = answer;
-
-      // verif si les 2 joueurs ont repondu
-      const answers = answeredQuestions[roomId][questionIndex];
-      const players = Object.keys(answers);
-
-      // Suppose que la room a 2 joueurs
-      if (players.length === 2) {
-        const quiz = activeGames[roomId].quiz;
-        const correctAnswer = quiz.subTheme.questions[questionIndex].answer;
-
-        // m a j du score
-        const playersScores = players.map((player) => {
-          const isCorrect = answers[player] === correctAnswer;
-          if (!activeGames[roomId].scores[player]) activeGames[roomId].scores[player] = 0;
-          if (isCorrect) activeGames[roomId].scores[player]++;
-          return {
-            username: player,
-            score: activeGames[roomId].scores[player],
-          };
-        });
-
-        // resultat envoye a la room
-        io.to(roomId).emit('question_result', {
-          correctAnswer,
-          playersScores,
-          nextQuestionIndex: questionIndex + 1,
-        });
-      }
-    });
-
-    // deconnexion
-    socket.on("player_answer", ({ roomId, questionIndex, answer, correct }) => {
+    socket.on("player_answer", ({ roomId, questionIndex, answer }) => {
       const roomState = gameStateByRoom[roomId];
-      if (!roomState) return;
+      if (!roomState || questionIndex !== roomState.currentQuestionIndex)
+        return;
+      if (
+        !roomState.players[socket.id] ||
+        roomState.players[socket.id].answered
+      )
+        return;
 
-      if (questionIndex !== roomState.currentQuestionIndex) return; // réponse en décalage
+      const playerInfo = roomState.players[socket.id];
+      const username = playerInfo.username;
+      const correctAnswer = roomState.correctAnswers[questionIndex];
+      const correct =
+        answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
 
-      roomState.players[socket.id] = { answered: true };
+      if (!activeGames[roomId].scores[username]) {
+        activeGames[roomId].scores[username] = 0;
+      }
+      if (correct) {
+        activeGames[roomId].scores[username]++;
+      }
 
-      const allAnswered = Object.values(roomState.players).every(p => p.answered);
+      roomState.players[socket.id].answered = true;
+      roomState.players[socket.id].correct = correct;
+
+      socket.emit("answer_feedback", {
+        correctAnswer,
+        yourAnswer: answer,
+        correct,
+        yourScore: activeGames[roomId].scores[username],
+      });
+
+      const allAnswered = Object.values(roomState.players).every(
+        (p) => p.answered
+      );
 
       if (allAnswered) {
+        // Les deux joueurs ont répondu → on annule le timer et on avance rapidement
         clearTimeout(roomState.timeoutId);
-        io.to(roomId).emit("next_question");
 
-        resetRoomState(io, roomId);
+        setTimeout(() => {
+          sendNextQuestion(io, roomId);
+        }, 2000);
+      } else {
+        console.log("joueurs n'ont pas rep");
       }
     });
-
-
 
     socket.on("disconnect", () => {
       console.log(`Déconnexion : ${socket.id}`);
+
+      // Retirer des salles d'attente
       for (const catId in waitingRoomsByCategory) {
-        waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(p => p.socket.id !== socket.id);
+        waitingRoomsByCategory[catId] = waitingRoomsByCategory[catId].filter(
+          (p) => p.socket.id !== socket.id
+        );
+      }
+
+      // Gérer l'abandon en jeu
+      for (const roomId in gameStateByRoom) {
+        if (gameStateByRoom[roomId].players[socket.id]) {
+          io.to(roomId).emit("opponent_left", {
+            message: "Votre adversaire a quitté la partie.",
+          });
+
+          clearTimeout(gameStateByRoom[roomId].timeoutId);
+          delete gameStateByRoom[roomId];
+          delete activeGames[roomId];
+
+          // resetRoomState(io, roomId);
+
+          break;
+        }
       }
     });
   });
 }
 
-function resetRoomState(io, roomId) {
+// Lance un timer de 10 secondes pour la question actuelle
+function startQuestionTimer(io, roomId) {
   const roomState = gameStateByRoom[roomId];
   if (!roomState) return;
 
-  // Incrémente la question courante
-  roomState.currentQuestionIndex++;
-
-  // Vérifie s’il reste des questions
-  if (roomState.currentQuestionIndex >= roomState.totalQuestions) {
-    delete gameStateByRoom[roomId];
-    return;
-  }
-
-  // Réinitialise les réponses
-  Object.keys(roomState.players).forEach(id => {
-    roomState.players[id].answered = false;
-  });
-
-  // Relance un timeout pour la prochaine question
   roomState.timeoutId = setTimeout(() => {
-    io.to(roomId).emit("next_question");
-    resetRoomState(io, roomId);
+    sendNextQuestion(io, roomId);
   }, 10000);
 }
 
+async function sendNextQuestion(io, roomId) {
+  const roomState = gameStateByRoom[roomId];
+  if (!roomState) return;
+
+  // 💥 On annule tout ancien timer, au cas où
+  if (roomState.timeoutId) {
+    clearTimeout(roomState.timeoutId);
+    roomState.timeoutId = null;
+  }
+
+  const index = ++roomState.currentQuestionIndex;
+  const quiz = roomState.quiz;
+
+  // console.log(index)
+
+  if (index >= quiz.subTheme.questions.length) {
+    const finalScores = activeGames[roomId].scores;
+
+    const isSolo = Object.keys(gameStateByRoom[roomId].players).length === 1;
+
+    io.to(roomId).emit(
+      "game_over",
+      isSolo
+        ? {
+            score: finalScores[Object.keys(finalScores)[0]],
+            message: "Fin de la partie solo",
+          }
+        : {
+            scores: finalScores,
+          }
+    );
+
+    clearTimeout(roomState.timeoutId);
+    delete gameStateByRoom[roomId];
+    delete activeGames[roomId];
+
+    return;
+  }
+
+  // Réinitialiser le statut des joueurs
+  Object.keys(roomState.players).forEach((id) => {
+    roomState.players[id].answered = false;
+  });
+
+  const fullQuestion = quiz.subTheme.questions[index];
+  io.to(roomId).emit("new_question", {
+    question: fullQuestion,
+    questionIndex: index,
+  });
+
+  startQuestionTimer(io, roomId);
+}
 
 module.exports = socketGame;
