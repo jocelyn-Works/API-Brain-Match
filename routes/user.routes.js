@@ -11,8 +11,7 @@ const upload = multer({ storage: storage });
 
 // upload
 router.post("/upload", upload.single('file'), uploadController.uploadProfil);
-// update score
-router.put("/score/:id", userController.updateScore);
+
 // all user
 router.get("/", userController.getAllUsers);
 // one user
@@ -22,8 +21,9 @@ router.put("/:id", userController.updateUser);
 
 
 ////////////////////////////////////////////////////////////////////////
-router.patch("/friend/send/:senderId/:receiverId", userController.sendFriendRequest);
-router.patch("/friend/accept/:userId/:requesterId", userController.acceptFriendRequest);
+router.patch("/friend/send/:senderId/:receiverId", userController.sendFriendRequest);   //user qui veut ajouter / un userID
+router.patch("/friend/accept/:userId/:requesterId", userController.acceptFriendRequest); // acepter => // userID  / friendRequestsID
+router.delete("/friend/delete/:userId/:requesterId", userController.deleteFriendRequest); //  delete => // 
 router.get("/friend-requests/:userId", userController.getFriendRequests);
 
 

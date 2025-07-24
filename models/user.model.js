@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema(
     },
     friends: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     score: {
       type: Number,
       default: 0,

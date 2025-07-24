@@ -1,7 +1,6 @@
 const UserModel = require("../models/user.model");
 const ObjectID = require("mongoose").Types.ObjectId;
 
-
 // all users
 module.exports.getAllUsers = async (req, res) => {
   try {
@@ -106,7 +105,14 @@ module.exports.sendFriendRequest = async (req, res) => {
     }
 
     receiver.friendRequests.push(senderId);
+
+    if (!sender.sentFriendRequests?.includes(receiverId)) {
+      sender.sentFriendRequests = sender.sentFriendRequests || [];
+      sender.sentFriendRequests.push(receiverId);
+    }
+
     await receiver.save();
+    await sender.save();
 
     res.status(200).json({ message: "Demande d’ami envoyée" });
   } catch (err) {
@@ -169,23 +175,39 @@ module.exports.acceptFriendRequest = async (req, res) => {
   }
 };
 
-module.exports.updateScore = async (req, res) => {
-  if (!ObjectID.isValid(req.params.id))
-    return res.status(400).send("ID Inconnue : " + req.params.id);
+module.exports.deleteFriendRequest = async (req, res) => {
+  const { userId, requesterId } = req.params;
 
   try {
-    const updatedUser = await UserModel.findOneAndUpdate(
-      { _id: req.params.id },
-      {
-        $set: {
-          score: req.body.score,
-        },
-      },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    ).select("-password");
+    const user = await UserModel.findById(userId);
+    const requester = await UserModel.findById(requesterId);
 
-    res.send(updatedUser);
+    if (!user || !requester) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    // Vérifie que la demande d'ami existe
+    if (!user.friendRequests.includes(requesterId)) {
+      return res
+        .status(400)
+        .json({ message: "Aucune demande de cet utilisateur" });
+    }
+
+    user.friendRequests = user.friendRequests.filter(
+      (id) => id.toString() !== requesterId
+    );
+
+    if (requester.sentFriendRequests) {
+      requester.sentFriendRequests = requester.sentFriendRequests.filter(
+        (id) => id.toString() !== userId
+      );
+    }
+
+    await user.save();
+    await requester.save();
+
+    res.status(200).json({ message: "Demande d'ami supprimée avec succès" });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
