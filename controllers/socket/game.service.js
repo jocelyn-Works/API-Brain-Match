@@ -22,7 +22,7 @@ function socketGame(io) {
   });
 
   io.on("connection", (socket) => {
-    
+
     // SOLO //
     socket.on("join_game_solo", async ({ categoryId }) => {
       if (!categoryId)
@@ -203,7 +203,7 @@ function socketGame(io) {
         setTimeout(() => {
           sendNextQuestion(io, roomId);
         }, 2000);
-      } 
+      }
     });
 
     socket.on("disconnect", () => {
@@ -259,7 +259,7 @@ async function sendNextQuestion(io, roomId) {
   const index = ++roomState.currentQuestionIndex;
   const quiz = roomState.quiz;
 
-  // console.log(index)
+  console.log("question n°" + index)
 
   if (index >= quiz.subTheme.questions.length) {
     const finalScores = activeGames[roomId].scores;
@@ -270,12 +270,15 @@ async function sendNextQuestion(io, roomId) {
       "game_over",
       isSolo
         ? {
-            score: finalScores[Object.keys(finalScores)[0]],
-            message: "Fin de la partie solo",
-          }
+          score: finalScores[Object.keys(finalScores)[0]],
+          totalQuestions: quiz.subTheme.questions.length,
+          message: "Fin de la partie solo",
+        }
         : {
-            scores: finalScores,
-          }
+          scores: finalScores,
+          totalQuestions: quiz.subTheme.questions.length,
+          message: "Fin de la partie versus",
+        }
     );
 
     clearTimeout(roomState.timeoutId);
