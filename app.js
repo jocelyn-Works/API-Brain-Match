@@ -5,10 +5,10 @@ const path = require("path");
 require("dotenv").config({ path: "./config/.env" });
 const { Server } = require("socket.io");
 const cors = require("cors");
-// const cookieParser = require('cookie-parser');
+const cookieParser = require('cookie-parser');
 
 const app = express();
-// app.use(cookieParser());
+app.use(cookieParser());
 
 app.use(cors());
 const server = http.createServer(app);
@@ -39,7 +39,7 @@ mongoose
 
 
 // Import des middlewares auth
-//const { checkUser, requireAuth } = require('./middleware/auth.middleware');
+const { checkUser, requireAuth } = require('./middleware/auth.middleware');
 
 // Import des routes
 const authRoutes = require("./routes/auth.routes");
@@ -47,20 +47,20 @@ const userRoutes = require("./routes/user.routes");
 const quizRoutes = require("./routes/quiz.routes");
 
 // Routes publiques (login / register)
-// app.use('/api', (req, res, next) => {
-//   if (req.path === '/login' || req.path === '/register') {
-//     return next(); // on skip checkUser pour ces routes publiques
-//   }
-//   checkUser(req, res, next);
-// });
+app.use('/api', (req, res, next) => {
+  if (req.path === '/login' || req.path === '/register') {
+    return next(); // on skip checkUser pour ces routes publiques
+  }
+  checkUser(req, res, next);
+});
 
 app.use("/api", authRoutes);
 
 // Routes protégées par requireAuth
-// app.use('/api/user', requireAuth, userRoutes);
-// app.use('/api/quiz', requireAuth, quizRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/quiz', quizRoutes);
+app.use('/api/user', requireAuth, userRoutes);
+app.use('/api/quiz', requireAuth, quizRoutes);
+//app.use('/api/user', userRoutes);
+//app.use('/api/quiz', quizRoutes);
 
 // Socket.io
 const socketGame = require("./controllers/socket/game.service");

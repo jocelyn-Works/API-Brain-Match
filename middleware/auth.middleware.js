@@ -44,10 +44,7 @@ module.exports.requireAuth = async (req, res, next) => {
 
   try {
     const decodedToken = await verifyToken(token, process.env.TOKEN_SECRET);
-    console.log(decodedToken.id);
-    
-
-    
+   
     res.locals.userId = decodedToken.id;
     next();
   } catch (err) {
