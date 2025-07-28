@@ -35,6 +35,13 @@ async function getRandomSubThemeQuestions(categoryId) {
 
 async function updateUserScore(userId, pointsToAdd) {
   try {
+    const user = await UserModel.findById(userId);
+
+    if (!user) return;
+
+    // Calcul du nouveau score sans descendre en dessous de 0
+    const newScore = Math.max(0, user.score + pointsToAdd);
+
     await UserModel.findByIdAndUpdate(
       userId,
       { $inc: { score: pointsToAdd } }, // incrémente directement
