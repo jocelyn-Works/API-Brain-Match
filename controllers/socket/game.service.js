@@ -280,6 +280,27 @@ async function sendNextQuestion(io, roomId) {
           message: "Fin de la partie versus",
         }
     );
+    // **Nouvelle partie : mise à jour des scores en base**
+    if (!isSolo) {
+      // Récupère les données des deux joueurs (id et username)
+      const playersData = Object.values(roomState.players);
+      const [player1, player2] = playersData;
+      const id1 = player1._id, id2 = player2._id;
+      const score1 = finalScores[player1.username];
+      const score2 = finalScores[player2.username];
+
+      if (score1 > score2) {
+        updateUserScore(id1, 10);  // +10 au gagnant
+        updateUserScore(id2, -10); // -10 au perdant
+      } else if (score2 > score1) {
+        updateUserScore(id2, 10);
+        updateUserScore(id1, -10);
+      } else {
+        // Égalité : +5 pour les deux
+        updateUserScore(id1, 5);
+        updateUserScore(id2, 5);
+      }
+    }
 
     clearTimeout(roomState.timeoutId);
     delete gameStateByRoom[roomId];
