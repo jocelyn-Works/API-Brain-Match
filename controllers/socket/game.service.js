@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const waitingRoomsByCategory = {};
 const activeGames = {};
 const gameStateByRoom = {};
+const readyPlayers = {};
 
 function socketGame(io) {
   io.use((socket, next) => {
@@ -150,8 +151,9 @@ function socketGame(io) {
           roomId,
           players: [player1.userData, player2.userData],
           message: "La partie commence !",
-          question: quiz.subTheme.questions[0],
-          questionIndex: 0,
+          // Dont send the question right away, wait "ready"
+          // question: quiz.subTheme.questions[0],
+          // questionIndex: 0,
           totalQuestions: quiz.subTheme.questions.length,
         });
 
@@ -233,6 +235,32 @@ function socketGame(io) {
         }
       }
     });
+
+    socket.on("client_ready_for_first_question", ({ roomId }) => {
+      if (!readyPlayers[roomId]) {
+        readyPlayers[roomId] = new Set();
+      }
+
+      readyPlayers[roomId].add(socket.id);
+
+      const playerCount = Object.keys(gameStateByRoom[roomId]?.players || {}).length;
+
+      if (readyPlayers[roomId].size === playerCount) {
+        const roomState = gameStateByRoom[roomId];
+        if (!roomState) return;
+
+        const firstQuestion = roomState.quiz.subTheme.questions[0];
+
+        io.to(roomId).emit("new_question", {
+          question: firstQuestion,
+          questionIndex: 0,
+        });
+
+        startQuestionTimer(io, roomId);
+        delete readyPlayers[roomId]; // nettoyage
+      }
+    });
+
   });
 }
 
