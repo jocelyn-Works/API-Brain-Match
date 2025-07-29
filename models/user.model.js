@@ -65,6 +65,6 @@ userSchema.statics.login = async function (email, password) {
   throw Error("Email Incorecte");
 };
 // user = nom de la table
-const UserModel = mongoose.model("user", userSchema);
+const UserModel = mongoose.model("User", userSchema);
 
 module.exports = UserModel;

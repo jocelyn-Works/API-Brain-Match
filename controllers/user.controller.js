@@ -126,16 +126,37 @@ module.exports.getFriendRequests = async (req, res) => {
   try {
     const user = await UserModel.findById(userId).populate(
       "friendRequests",
-      "username picture"
+      "username picture email score friends friendRequests sentFriendRequests"
     );
-    if (!user)
-      return res.status(404).json({ message: "Utilisateur non trouvé" });
 
-    res.status(200).json(user.friendRequests);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    // Mapper les friendRequests avec URL complète pour picture
+    const formattedFriendRequests = user.friendRequests.map((friend) => {
+      return {
+        _id: friend._id,
+        username: friend.username,
+        email: friend.email,
+        score: friend.score,
+        friends: friend.friends,
+        friendRequests: friend.friendRequests,
+        sentFriendRequests: friend.sentFriendRequests,
+        picture: friend.picture
+          ? `${baseUrl}/${friend.picture.replace(/^\.?\/*/, "")}`
+          : null,
+      };
+    });
+
+    res.status(200).json(formattedFriendRequests);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 module.exports.acceptFriendRequest = async (req, res) => {
   const { userId, requesterId } = req.params;

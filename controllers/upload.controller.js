@@ -36,7 +36,14 @@ module.exports.uploadProfil = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    res.send(updatedUser);
+    // Génération de l'URL absolue de l'image
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const pictureUrl = imagePath
+      ? `${baseUrl}/${imagePath.replace(/^\.?\/*/, "")}`
+      : null;
+
+    // Réponse uniquement avec l'URL
+    return res.status(200).json({ picture: pictureUrl });
   } catch (err) {
     console.error("Raw upload error:", err);
     const errors = uploadErrors(err);
