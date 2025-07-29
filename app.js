@@ -2,7 +2,9 @@ const express = require("express");
 const http = require("http");
 const mongoose = require("mongoose");
 const path = require("path");
+
 require("dotenv").config({ path: "./config/.env" });
+
 const { Server } = require("socket.io");
 const cors = require("cors");
 const cookieParser = require('cookie-parser');
@@ -15,6 +17,9 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' }
 });
+
+
+
 
 // Middleware client
 app.use(express.json());

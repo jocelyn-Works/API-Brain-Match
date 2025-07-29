@@ -11,6 +11,13 @@
 <body class="bg-gray-100 text-gray-800">
     <div class="max-w-7xl mx-auto p-6 space-y-10">
 
+        <div class="flex justify-end">
+            <button id="logoutBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                Déconnexion
+            </button>
+        </div>
+
+
         <!-- Formulaire de création de catégorie -->
         <section class="bg-white p-6 rounded-lg shadow-md">
             <h2 class="text-3xl font-bold mb-6 text-blue-600">Créer une catégorie</h2>
@@ -70,6 +77,7 @@
                     <button type="submit"
                         class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">Créer les
                         questions</button>
+
                 </div>
             </form>
         </section>
@@ -245,6 +253,27 @@
                 console.error("Erreur serveur:", errorText);
             }
         });
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+            try {
+                const res = await fetch("/api/logout", {
+                    method: "POST",
+                    credentials: "include" // au cas où tu utilises des cookies
+                });
+
+                // Supprimer le token local côté client
+                localStorage.removeItem("jwt");
+
+                // Redirige vers la page de login
+                window.location.href = "/";
+            } catch (err) {
+                alert("Erreur lors de la déconnexion");
+                console.error(err);
+            }
+        });
+
+
+
     </script>
 </body>
 
