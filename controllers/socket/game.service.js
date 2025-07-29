@@ -147,16 +147,23 @@ function socketGame(io) {
           correctAnswers: quiz.subTheme.questions.map((q) => q.answer),
         };
 
-        io.to(roomId).emit("start_game", {
+        io.to(roomId).emit("prepare_game", {
           roomId,
           players: [player1.userData, player2.userData],
-          message: "La partie commence !",
-          question: quiz.subTheme.questions[0],
-          questionIndex: 0,
-          totalQuestions: quiz.subTheme.questions.length,
+          message: "La partie va commencer dans 3 secondes...",
         });
 
-        startQuestionTimer(io, roomId);
+        setTimeout(() => {
+          io.to(roomId).emit("start_game", {
+            roomId,
+            players: [player1.userData, player2.userData],
+            question: quiz.subTheme.questions[0],
+            questionIndex: 0,
+            totalQuestions: quiz.subTheme.questions.length,
+          });
+
+          startQuestionTimer(io, roomId);
+        }, 3000);
       }
     });
 
@@ -227,9 +234,6 @@ function socketGame(io) {
           clearTimeout(gameStateByRoom[roomId].timeoutId);
           delete gameStateByRoom[roomId];
           delete activeGames[roomId];
-
-          // resetRoomState(io, roomId);
-
           break;
         }
       }
@@ -281,7 +285,7 @@ async function sendNextQuestion(io, roomId) {
           message: "Fin de la partie versus",
         }
     );
-    // **Nouvelle partie : mise à jour des scores en base**
+    // mise à jour des scores en base**
     if (!isSolo) {
       // Récupère les données des deux joueurs (id et username)
       const playersData = Object.values(roomState.players);
