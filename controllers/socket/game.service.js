@@ -9,6 +9,7 @@ const waitingRoomsByCategory = {};
 const activeGames = {};
 const gameStateByRoom = {};
 
+
 function socketGame(io) {
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
@@ -22,7 +23,7 @@ function socketGame(io) {
   });
 
   io.on("connection", (socket) => {
-    
+
     // SOLO //
     socket.on("join_game_solo", async ({ categoryId }) => {
       if (!categoryId)
@@ -146,16 +147,23 @@ function socketGame(io) {
           correctAnswers: quiz.subTheme.questions.map((q) => q.answer),
         };
 
-        io.to(roomId).emit("start_game", {
+        io.to(roomId).emit("prepare_game", {
           roomId,
           players: [player1.userData, player2.userData],
-          message: "La partie commence !",
-          question: quiz.subTheme.questions[0],
-          questionIndex: 0,
-          totalQuestions: quiz.subTheme.questions.length,
+          message: "La partie va commencer dans 3 secondes...",
         });
 
-        startQuestionTimer(io, roomId);
+        setTimeout(() => {
+          io.to(roomId).emit("start_game", {
+            roomId,
+            players: [player1.userData, player2.userData],
+            question: quiz.subTheme.questions[0],
+            questionIndex: 0,
+            totalQuestions: quiz.subTheme.questions.length,
+          });
+
+          startQuestionTimer(io, roomId);
+        }, 3000);
       }
     });
 
@@ -203,7 +211,7 @@ function socketGame(io) {
         setTimeout(() => {
           sendNextQuestion(io, roomId);
         }, 2000);
-      } 
+      }
     });
 
     socket.on("disconnect", () => {
@@ -226,9 +234,6 @@ function socketGame(io) {
           clearTimeout(gameStateByRoom[roomId].timeoutId);
           delete gameStateByRoom[roomId];
           delete activeGames[roomId];
-
-          // resetRoomState(io, roomId);
-
           break;
         }
       }
@@ -259,7 +264,7 @@ async function sendNextQuestion(io, roomId) {
   const index = ++roomState.currentQuestionIndex;
   const quiz = roomState.quiz;
 
-  // console.log(index)
+  console.log("question n°" + index)
 
   if (index >= quiz.subTheme.questions.length) {
     const finalScores = activeGames[roomId].scores;
@@ -270,13 +275,37 @@ async function sendNextQuestion(io, roomId) {
       "game_over",
       isSolo
         ? {
-            score: finalScores[Object.keys(finalScores)[0]],
-            message: "Fin de la partie solo",
-          }
+          score: finalScores[Object.keys(finalScores)[0]],
+          totalQuestions: quiz.subTheme.questions.length,
+          message: "Fin de la partie solo",
+        }
         : {
-            scores: finalScores,
-          }
+          scores: finalScores,
+          totalQuestions: quiz.subTheme.questions.length,
+          message: "Fin de la partie versus",
+        }
     );
+    // mise à jour des scores en base**
+    if (!isSolo) {
+      // Récupère les données des deux joueurs (id et username)
+      const playersData = Object.values(roomState.players);
+      const [player1, player2] = playersData;
+      const id1 = player1._id, id2 = player2._id;
+      const score1 = finalScores[player1.username];
+      const score2 = finalScores[player2.username];
+
+      if (score1 > score2) {
+        updateUserScore(id1, 10);  // +10 au gagnant
+        updateUserScore(id2, -10); // -10 au perdant
+      } else if (score2 > score1) {
+        updateUserScore(id2, 10);
+        updateUserScore(id1, -10);
+      } else {
+        // Égalité : +5 pour les deux
+        updateUserScore(id1, 5);
+        updateUserScore(id2, 5);
+      }
+    }
 
     clearTimeout(roomState.timeoutId);
     delete gameStateByRoom[roomId];
