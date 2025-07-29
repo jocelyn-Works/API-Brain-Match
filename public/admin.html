@@ -78,11 +78,11 @@
     <script>
 
         // Vérifie si un token est présent
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("jwt");
 
         if (!token) {
             // Si pas connecté, redirige vers login
-            // window.location.href = "/home.html";
+            window.location.href = "/";
         }
 
         const categorySelect = document.getElementById("categorySelect");

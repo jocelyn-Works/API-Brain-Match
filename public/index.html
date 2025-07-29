@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Connexion Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+<div class="max-w-md mx-auto mt-20 p-8 bg-white shadow-lg rounded-xl">
+    <h2 class="text-2xl font-bold mb-6 text-center">Connexion Admin</h2>
+
+    <div class="mb-4">
+        <label for="loginId" class="block text-sm font-medium">Email ou pseudo</label>
+        <input type="text" id="loginId" class="mt-1 w-full border px-3 py-2 rounded-md" placeholder="Identifiant">
+    </div>
+    <div class="mb-4">
+        <label for="loginPassword" class="block text-sm font-medium">Mot de passe</label>
+        <input type="password" id="loginPassword" class="mt-1 w-full border px-3 py-2 rounded-md" placeholder="Mot de passe">
+    </div>
+    <div class="flex justify-center">
+        <button id="btnLogin" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Connexion</button>
+    </div>
+
+    <input type="hidden" id="tokenInput">
+    <p id="authUserId" class="text-green-600 text-center mt-4 font-semibold"></p>
+    <pre id="log" class="mt-4 p-2 bg-gray-200 rounded overflow-auto h-32 text-sm"></pre>
+</div>
+
+<script>
+    document.getElementById("btnLogin").onclick = async () => {
+        const identifier = document.getElementById("loginId").value.trim();
+        const password = document.getElementById("loginPassword").value;
+
+        if (!identifier || !password) {
+            log("❌ Identifiant ou mot de passe manquant.");
+            return;
+        }
+
+        try {
+            const res = await fetch("http://localhost:3000/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identifier, password }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || "Erreur de connexion.");
+            }
+
+            const data = await res.json();
+            console.log("Réponse du serveur :", data);
+
+            const token = data.token;
+
+            if (!token) {
+                throw new Error("Pas de token fourni.");
+            }
+
+            // Stocker le token dans le champ caché et localStorage
+            document.getElementById("tokenInput").value = token;
+            localStorage.setItem("jwt", token);
+
+            // Message utilisateur + redirection
+            document.getElementById("authUserId").textContent = "Connecté !";
+            log("✅ Connexion réussie. Redirection vers /admin.html...");
+
+            setTimeout(() => {
+                window.location.href = "/admin.html";
+            }, 1000);
+
+        } catch (err) {
+            log("❌ Connexion échouée : " + err.message);
+        }
+    };
+
+    function log(msg) {
+        const logEl = document.getElementById("log");
+        logEl.textContent += msg + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+        console.log(msg);
+    }
+</script>
+</body>
+</html>
+
+
+
+
