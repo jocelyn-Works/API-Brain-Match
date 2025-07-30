@@ -1,7 +1,6 @@
 // services/quiz.service.js
 const Category = require("../../models/quiz.model");
-const UserModel = require("../../models/user.model")
-
+const UserModel = require("../../models/user.model");
 
 const axios = require("axios");
 
@@ -31,7 +30,6 @@ async function getRandomSubThemeQuestions(categoryId) {
     subTheme: {
       title: randomSubTheme.title,
       questions: questionsWithFullPictureUrl,
-
     },
   };
 }
@@ -87,11 +85,17 @@ async function generateIaQuiz(theme) {
   `;
 
   try {
-    const response = await axios.post("http://192.168.1.72:11434/api/generate", {
-      model: "mistral:latest",
-      prompt,
-      stream: false,
-    });
+    const response = await axios.post(
+      "http://localhost:11434/api/generate",
+      {
+        model: "mistral:latest",
+        prompt,
+        stream: false,
+      },
+      {
+        timeout: 120000, // ← 2 minutes
+      }
+    );
 
     const raw = response.data.response;
     const jsonBlock = extractJsonBlock(raw);
@@ -110,5 +114,7 @@ async function generateIaQuiz(theme) {
 }
 
 module.exports = {
-  getRandomSubThemeQuestions, updateUserScore,generateIaQuiz
+  getRandomSubThemeQuestions,
+  updateUserScore,
+  generateIaQuiz,
 };

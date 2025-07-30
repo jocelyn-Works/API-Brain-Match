@@ -38,7 +38,7 @@ function socketGame(io) {
       socket.join(roomId);
 
       const quiz = await getRandomSubThemeQuestions(categoryId);
-      //console.log(quiz.subTheme.questions)
+      console.log(quiz.subTheme.questions)
       if (!quiz || !quiz.subTheme.questions.length) {
         socket.emit("error", { message: "Aucune question disponible." });
         return;
@@ -183,10 +183,12 @@ function socketGame(io) {
       }
 
       const roomId = `ia-${socket.id}`;
+      console.log(roomId)
       socket.join(roomId);
 
       try {
-        const { data: questions } = await generateIaQuiz(theme);
+        const  questions  = await generateIaQuiz(theme);
+        console.log(questions)
 
         if (!questions || !questions.length) {
           return socket.emit("error", { message: "Quiz IA vide ou invalide." });
