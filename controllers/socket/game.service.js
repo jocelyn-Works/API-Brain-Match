@@ -1,6 +1,7 @@
 const {
   getRandomSubThemeQuestions,
   updateUserScore,
+  generateIaQuiz,
 } = require("../../controllers/socket/quiz.service");
 const UserModel = require("../../models/user.model");
 const jwt = require("jsonwebtoken");
@@ -8,7 +9,6 @@ const jwt = require("jsonwebtoken");
 const waitingRoomsByCategory = {};
 const activeGames = {};
 const gameStateByRoom = {};
-
 
 function socketGame(io) {
   io.use((socket, next) => {
@@ -23,7 +23,6 @@ function socketGame(io) {
   });
 
   io.on("connection", (socket) => {
-
     // SOLO //
     socket.on("join_game_solo", async ({ categoryId }) => {
       if (!categoryId)
@@ -39,6 +38,7 @@ function socketGame(io) {
       socket.join(roomId);
 
       const quiz = await getRandomSubThemeQuestions(categoryId);
+      //console.log(quiz.subTheme.questions)
       if (!quiz || !quiz.subTheme.questions.length) {
         socket.emit("error", { message: "Aucune question disponible." });
         return;
@@ -166,6 +166,71 @@ function socketGame(io) {
         }, 3000);
       }
     });
+    
+    // IA
+    socket.on("join_game_ia", async ({ theme }) => {
+      if (!theme) {
+        return socket.emit("error", {
+          message: "Thème manquant pour le quiz IA.",
+        });
+      }
+
+      const user = await UserModel.findById(socket.user.id).select(
+        "username picture score"
+      );
+      if (!user) {
+        return socket.emit("error", { message: "Utilisateur introuvable" });
+      }
+
+      const roomId = `ia-${socket.id}`;
+      socket.join(roomId);
+
+      try {
+        const { data: questions } = await generateIaQuiz(theme);
+
+        if (!questions || !questions.length) {
+          return socket.emit("error", { message: "Quiz IA vide ou invalide." });
+        }
+
+        activeGames[roomId] = {
+          quiz: { subTheme: { questions } },
+          scores: {
+            [user.username]: 0,
+          },
+        };
+
+        gameStateByRoom[roomId] = {
+          players: {
+            [socket.id]: {
+              answered: false,
+              username: user.username,
+              _id: user._id,
+            },
+          },
+          currentQuestionIndex: 0,
+          totalQuestions: questions.length,
+          quiz: { subTheme: { questions } },
+          timeoutId: null,
+          correctAnswers: questions.map((q) => q.answer),
+        };
+
+        socket.emit("start_game", {
+          roomId,
+          players: [user],
+          message: "Partie solo avec un quiz IA !",
+          question: questions[0],
+          questionIndex: 0,
+          totalQuestions: questions.length,
+        });
+
+        startQuestionTimer(io, roomId);
+      } catch (err) {
+        console.error("Erreur quiz IA :", err.message);
+        socket.emit("error", {
+          message: "Erreur lors de la génération du quiz IA.",
+        });
+      }
+    });
 
     socket.on("player_answer", ({ roomId, questionIndex, answer }) => {
       const roomState = gameStateByRoom[roomId];
@@ -264,7 +329,7 @@ async function sendNextQuestion(io, roomId) {
   const index = ++roomState.currentQuestionIndex;
   const quiz = roomState.quiz;
 
-  console.log("question n°" + index)
+  console.log("question n°" + index);
 
   if (index >= quiz.subTheme.questions.length) {
     const finalScores = activeGames[roomId].scores;
@@ -275,27 +340,28 @@ async function sendNextQuestion(io, roomId) {
       "game_over",
       isSolo
         ? {
-          score: finalScores[Object.keys(finalScores)[0]],
-          totalQuestions: quiz.subTheme.questions.length,
-          message: "Fin de la partie solo",
-        }
+            score: finalScores[Object.keys(finalScores)[0]],
+            totalQuestions: quiz.subTheme.questions.length,
+            message: "Fin de la partie solo",
+          }
         : {
-          scores: finalScores,
-          totalQuestions: quiz.subTheme.questions.length,
-          message: "Fin de la partie versus",
-        }
+            scores: finalScores,
+            totalQuestions: quiz.subTheme.questions.length,
+            message: "Fin de la partie versus",
+          }
     );
     // mise à jour des scores en base**
     if (!isSolo) {
       // Récupère les données des deux joueurs (id et username)
       const playersData = Object.values(roomState.players);
       const [player1, player2] = playersData;
-      const id1 = player1._id, id2 = player2._id;
+      const id1 = player1._id,
+        id2 = player2._id;
       const score1 = finalScores[player1.username];
       const score2 = finalScores[player2.username];
 
       if (score1 > score2) {
-        updateUserScore(id1, 10);  // +10 au gagnant
+        updateUserScore(id1, 10); // +10 au gagnant
         updateUserScore(id2, -10); // -10 au perdant
       } else if (score2 > score1) {
         updateUserScore(id2, 10);
