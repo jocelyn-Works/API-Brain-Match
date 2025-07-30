@@ -54,6 +54,7 @@ const { checkUser, requireAuth } = require('./middleware/auth.middleware');
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const quizRoutes = require("./routes/quiz.routes");
+const iaRoute = require("./routes/ia.routes");
 
 // Routes publiques (login / register)
 app.use('/api', (req, res, next) => {
@@ -68,8 +69,9 @@ app.use("/api", authRoutes);
 // Routes protégées par requireAuth
 app.use('/api/user', requireAuth, userRoutes);
 app.use('/api/quiz', requireAuth, quizRoutes);
-//app.use('/api/user', userRoutes);
-//app.use('/api/quiz', quizRoutes);
+
+app.use('/api/ia', iaRoute);
+
 
 // Socket.io
 const socketGame = require("./controllers/socket/game.service");
