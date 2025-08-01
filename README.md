@@ -1,4 +1,1 @@
-mkdir config. => .env => 
-```
-add
- ```
+ollama run mistral

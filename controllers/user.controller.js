@@ -56,24 +56,69 @@ module.exports.getOneUser = async (req, res) => {
 
 // update user
 module.exports.updateUser = async (req, res) => {
-  if (!ObjectID.isValid(req.params.id))
-    return res.status(400).send("ID Inconnue : " + req.params.id);
+  const userId = req.params.id;
+
+  if (!ObjectID.isValid(userId))
+    return res.status(400).send("ID Inconnue : " + userId);
+
+  const { username, email } = req.body;
 
   try {
+    if (username) {
+      const existingUser = await UserModel.findOne({
+        username,
+        _id: { $ne: userId },
+      });
+      if (existingUser) {
+        return res
+          .status(409)
+          .json({ message: "Le nom d'utilisateur est déjà utilisé." });
+      }
+    }
+
+    if (email) {
+      const existingUser = await UserModel.findOne({
+        email,
+        _id: { $ne: userId },
+      });
+      if (existingUser) {
+        return res
+          .status(409)
+          .json({ message: "L'email est déjà utilisé." });
+      }
+    }
+
     const updatedUser = await UserModel.findOneAndUpdate(
-      { _id: req.params.id },
+      { _id: userId },
       {
         $set: {
           username: req.body.username,
           email: req.body.email,
         },
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { new: true, upsert: false, setDefaultsOnInsert: true }
     ).select("-password");
 
     res.send(updatedUser);
   } catch (err) {
     return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.deleteUser = async (req, res) => {
+  if (!ObjectID.isValid(req.params.id))
+    return res.status(400).send("ID inconnue : " + req.params.id);
+
+  try {
+    const deletedUser = await UserModel.findByIdAndDelete(req.params.id);
+
+    if (!deletedUser) {
+      return res.status(404).send("Utilisateur non trouvé");
+    }
+
+    res.status(200).send({ message: "Utilisateur supprimé avec succès" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -156,7 +201,6 @@ module.exports.getFriendRequests = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 module.exports.acceptFriendRequest = async (req, res) => {
   const { userId, requesterId } = req.params;

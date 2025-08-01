@@ -15,9 +15,11 @@ router.post("/upload", upload.single('file'), uploadController.uploadProfil);
 // all user
 router.get("/", userController.getAllUsers);
 // one user
-router.get("/:id",userController.getOneUser)
+router.get("/:id", userController.getOneUser)
 // update one user 
-router.put("/:id", userController.updateUser);
+router.patch("/:id", userController.updateUser);
+// delete user
+router.delete("/:id", userController.deleteUser);
 
 
 ////////////////////////////////////////////////////////////////////////
