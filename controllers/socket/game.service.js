@@ -166,7 +166,7 @@ function socketGame(io) {
         }, 3000);
       }
     });
-    
+
     // IA
     socket.on("join_game_ia", async ({ theme }) => {
       if (!theme) {
@@ -187,7 +187,7 @@ function socketGame(io) {
       socket.join(roomId);
 
       try {
-        const  questions  = await generateIaQuiz(theme);
+        const questions = await generateIaQuiz(theme);
         console.log(questions)
 
         if (!questions || !questions.length) {
@@ -315,7 +315,7 @@ function startQuestionTimer(io, roomId) {
 
   roomState.timeoutId = setTimeout(() => {
     sendNextQuestion(io, roomId);
-  }, 10000);
+  }, 12000);
 }
 
 async function sendNextQuestion(io, roomId) {
@@ -342,15 +342,15 @@ async function sendNextQuestion(io, roomId) {
       "game_over",
       isSolo
         ? {
-            score: finalScores[Object.keys(finalScores)[0]],
-            totalQuestions: quiz.subTheme.questions.length,
-            message: "Fin de la partie solo",
-          }
+          score: finalScores[Object.keys(finalScores)[0]],
+          totalQuestions: quiz.subTheme.questions.length,
+          message: "Fin de la partie solo",
+        }
         : {
-            scores: finalScores,
-            totalQuestions: quiz.subTheme.questions.length,
-            message: "Fin de la partie versus",
-          }
+          scores: finalScores,
+          totalQuestions: quiz.subTheme.questions.length,
+          message: "Fin de la partie versus",
+        }
     );
     // mise à jour des scores en base**
     if (!isSolo) {
