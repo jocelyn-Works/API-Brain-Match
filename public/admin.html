@@ -9,175 +9,170 @@
 </head>
 
 <body class="bg-gray-100 text-gray-800">
-    <div class="max-w-7xl mx-auto p-6 space-y-10">
+<div class="max-w-7xl mx-auto p-6 space-y-10">
 
-        <div class="flex justify-end">
-            <button id="logoutBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
-                Déconnexion
-            </button>
-        </div>
-
-
-        <!-- Formulaire de création de catégorie -->
-        <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-3xl font-bold mb-6 text-blue-600">Créer une catégorie</h2>
-            <form id="categoryForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Thème</label>
-                    <input type="text" name="theme" required class="w-full p-3 border border-gray-300 rounded"
-                        placeholder="Ex: Histoire" />
-                </div>
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Logo (image)</label>
-                    <input type="file" name="logo" id="logoInput" accept="image/*" required
-                        class="w-full p-2 border rounded" />
-                    <img id="logoPreview" src="" alt="Prévisualisation logo"
-                        class="mt-2 h-20 hidden object-contain rounded" />
-                </div>
-                <div class="md:col-span-2">
-                    <label class="block mb-1 font-medium text-gray-700">Description</label>
-                    <textarea name="description" required class="w-full p-3 border border-gray-300 rounded"
-                        placeholder="Brève description du thème..."></textarea>
-                </div>
-                <div>
-                    <label class="block mb-1 font-medium text-gray-700">Image principale</label>
-                    <input type="file" name="image" id="imageInput" accept="image/*" required
-                        class="w-full p-2 border rounded" />
-                    <img id="imagePreview" src="" alt="Prévisualisation image"
-                        class="mt-2 h-20 hidden object-cover rounded" />
-                </div>
-                <div class="md:col-span-2">
-                    <button type="submit"
-                        class="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 transition w-full">Créer la
-                        catégorie</button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Formulaire de création de questions -->
-        <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-3xl font-bold mb-6 text-green-600">Ajouter des questions</h2>
-            <form id="questionForm" class="space-y-6">
-                <div>
-                    <label class="block text-lg font-medium mb-1">Choisir une catégorie</label>
-                    <select id="categorySelect" name="categoryId" required
-                        class="w-full p-3 border border-gray-300 rounded">
-                        <option value="">-- Sélectionner une catégorie --</option>
-                    </select>
-                </div>
-                <div>
-                    <input type="text" name="subThemeTitle" placeholder="Sous-thème" required
-                        class="w-full p-3 border border-gray-300 rounded" />
-                </div>
-                <div id="questionsContainer" class="space-y-6"></div>
-                <div class="flex gap-4">
-                    <button type="button" id="addQuestionBtn"
-                        class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition">+ Ajouter une
-                        question</button>
-                    <button type="submit"
-                        class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">Créer les
-                        questions</button>
-
-                </div>
-            </form>
-        </section>
+    <div class="flex justify-end">
+        <button id="logoutBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+            Déconnexion
+        </button>
     </div>
 
-    <script>
+    <!-- Formulaire de création de catégorie -->
+    <section class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-3xl font-bold mb-6 text-blue-600">Créer une catégorie</h2>
+        <form id="categoryForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block mb-1 font-medium text-gray-700">Thème</label>
+                <input type="text" name="theme" required class="w-full p-3 border border-gray-300 rounded"
+                       placeholder="Ex: Histoire" />
+            </div>
+            <div>
+                <label class="block mb-1 font-medium text-gray-700">Logo (image)</label>
+                <input type="file" name="logo" id="logoInput" accept="image/*" required
+                       class="w-full p-2 border rounded" />
+                <img id="logoPreview" src="" alt="Prévisualisation logo"
+                     class="mt-2 h-20 hidden object-contain rounded" />
+            </div>
+            <div class="md:col-span-2">
+                <label class="block mb-1 font-medium text-gray-700">Description</label>
+                <textarea name="description" required class="w-full p-3 border border-gray-300 rounded"
+                          placeholder="Brève description du thème..."></textarea>
+            </div>
+            <div>
+                <label class="block mb-1 font-medium text-gray-700">Image principale</label>
+                <input type="file" name="image" id="imageInput" accept="image/*" required
+                       class="w-full p-2 border rounded" />
+                <img id="imagePreview" src="" alt="Prévisualisation image"
+                     class="mt-2 h-20 hidden object-cover rounded" />
+            </div>
+            <div class="md:col-span-2">
+                <button type="submit"
+                        class="bg-blue-600 text-white py-3 px-6 rounded hover:bg-blue-700 transition w-full">Créer la
+                    catégorie</button>
+            </div>
+        </form>
+    </section>
 
-        // Vérifie si un token est présent
-        const token = localStorage.getItem("jwt");
+    <!-- Formulaire de création de questions -->
+    <section class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-3xl font-bold mb-6 text-green-600">Ajouter des questions</h2>
+        <form id="questionForm" class="space-y-6">
+            <div>
+                <label class="block text-lg font-medium mb-1">Choisir une catégorie</label>
+                <select id="categorySelect" name="categoryId" required
+                        class="w-full p-3 border border-gray-300 rounded">
+                    <option value="">-- Sélectionner une catégorie --</option>
+                </select>
+            </div>
+            <div>
+                <input type="text" name="subThemeTitle" placeholder="Sous-thème" required
+                       class="w-full p-3 border border-gray-300 rounded" />
+            </div>
+            <div id="questionsContainer" class="space-y-6"></div>
+            <div class="flex gap-4">
+                <button type="button" id="addQuestionBtn"
+                        class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition">+ Ajouter une
+                    question</button>
+                <button type="button" id="removeQuestionBtn"
+                        class="bg-red-600 text-white px-5 py-2 rounded hover:bg-red-700 transition">- Supprimer une
+                    question</button>
+                <button type="submit"
+                        class="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition">Créer les
+                    questions</button>
+            </div>
+        </form>
+    </section>
+</div>
 
-        if (!token) {
-            // Si pas connecté, redirige vers login
-            window.location.href = "/";
-        }
+<script>
+    // Vérifie si un token est présent
+    const token = localStorage.getItem("jwt");
+    if (!token) {
+        window.location.href = "/";
+    }
 
-        const categorySelect = document.getElementById("categorySelect");
+    const categorySelect = document.getElementById("categorySelect");
 
-        async function loadCategories() {
-            try {
-                const res = await fetch("/api/quiz/category", {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-                const categories = await res.json();
-                categories.forEach(cat => {
-                    const opt = document.createElement("option");
-                    opt.value = cat._id;
-                    opt.textContent = `${cat.theme} — ${cat.description}`;
-                    categorySelect.appendChild(opt);
-                });
-            } catch (e) {
-                alert("Erreur lors du chargement des catégories");
-            }
-        }
-
-        document.getElementById("logoInput").addEventListener("change", function () {
-            const file = this.files[0];
-            const preview = document.getElementById("logoPreview");
-            if (file) {
-                preview.src = URL.createObjectURL(file);
-                preview.classList.remove("hidden");
-            } else {
-                preview.classList.add("hidden");
-                preview.src = "";
-            }
-        });
-
-        document.getElementById("imageInput").addEventListener("change", function () {
-            const file = this.files[0];
-            const preview = document.getElementById("imagePreview");
-            if (file) {
-                preview.src = URL.createObjectURL(file);
-                preview.classList.remove("hidden");
-            } else {
-                preview.classList.add("hidden");
-                preview.src = "";
-            }
-        });
-
-        loadCategories();
-
-        document.getElementById("categoryForm").addEventListener("submit", async function (e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
+    async function loadCategories() {
+        try {
             const res = await fetch("/api/quiz/category", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                method: "POST",
-                body: formData
+                headers: { Authorization: `Bearer ${token}` }
             });
+            const categories = await res.json();
+            categories.forEach(cat => {
+                const opt = document.createElement("option");
+                opt.value = cat._id;
+                opt.textContent = `${cat.theme} — ${cat.description}`;
+                categorySelect.appendChild(opt);
+            });
+        } catch (e) {
+            alert("Erreur lors du chargement des catégories");
+        }
+    }
 
-            if (res.ok) {
-                alert("Catégorie créée !");
-                e.target.reset();
-                categorySelect.innerHTML = '<option value="">-- Sélectionner une catégorie --</option>';
-                loadCategories();
-            } else {
-                alert("Erreur lors de la création");
-            }
+    document.getElementById("logoInput").addEventListener("change", function () {
+        const file = this.files[0];
+        const preview = document.getElementById("logoPreview");
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove("hidden");
+        } else {
+            preview.classList.add("hidden");
+            preview.src = "";
+        }
+    });
+
+    document.getElementById("imageInput").addEventListener("change", function () {
+        const file = this.files[0];
+        const preview = document.getElementById("imagePreview");
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove("hidden");
+        } else {
+            preview.classList.add("hidden");
+            preview.src = "";
+        }
+    });
+
+    loadCategories();
+
+    document.getElementById("categoryForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const res = await fetch("/api/quiz/category", {
+            headers: { Authorization: `Bearer ${token}` },
+            method: "POST",
+            body: formData
         });
 
-        let questionIndex = 0;
-        const maxQuestions = 10;
-        const container = document.getElementById("questionsContainer");
+        if (res.ok) {
+            alert("Catégorie créée !");
+            e.target.reset();
+            categorySelect.innerHTML = '<option value="">-- Sélectionner une catégorie --</option>';
+            loadCategories();
+        } else {
+            alert("Erreur lors de la création");
+        }
+    });
 
-        document.getElementById("addQuestionBtn").addEventListener("click", () => {
-            if (questionIndex >= maxQuestions) {
-                alert("Limite de 10 questions atteinte.");
-                return;
-            }
+    let questionIndex = 0;
+    const maxQuestions = 10;
+    const container = document.getElementById("questionsContainer");
 
-            const block = document.createElement("div");
-            block.className = "question-block bg-gray-50 p-4 rounded border space-y-3";
+    // Ajouter une question
+    document.getElementById("addQuestionBtn").addEventListener("click", () => {
+        if (questionIndex >= maxQuestions) {
+            alert("Limite de 10 questions atteinte.");
+            return;
+        }
 
-            const inputId = `questionImage-${questionIndex}`;
-            const imgId = `questionPreview-${questionIndex}`;
+        const block = document.createElement("div");
+        block.className = "question-block bg-gray-50 p-4 rounded border space-y-3";
 
-            block.innerHTML = `
+        const inputId = `questionImage-${questionIndex}`;
+        const imgId = `questionPreview-${questionIndex}`;
+
+        block.innerHTML = `
                 <input type="text" placeholder="Question" required class="w-full p-2 border rounded" data-type="question" />
                 <div class="grid grid-cols-2 gap-2">
                     <input type="text" placeholder="Option 1" required class="p-2 border rounded" data-type="option" />
@@ -191,90 +186,87 @@
                 <img id="${imgId}" src="" alt="Prévisualisation image" class="mt-2 h-20 hidden object-cover rounded" />
             `;
 
-            container.appendChild(block);
+        container.appendChild(block);
 
-            document.getElementById(inputId).addEventListener("change", function () {
-                const file = this.files[0];
-                const preview = document.getElementById(imgId);
-                if (file) {
-                    preview.src = URL.createObjectURL(file);
-                    preview.classList.remove("hidden");
-                } else {
-                    preview.classList.add("hidden");
-                    preview.src = "";
-                }
-            });
-
-            questionIndex++;
-        });
-
-        document.getElementById("questionForm").addEventListener("submit", async function (e) {
-            e.preventDefault();
-
-            const formData = new FormData();
-            const categoryId = document.querySelector("[name='categoryId']").value;
-            const subThemeTitle = document.querySelector("[name='subThemeTitle']").value;
-
-            formData.append("categoryId", categoryId);
-            formData.append("subThemeTitle", subThemeTitle);
-
-            const questionsArray = [];
-            document.querySelectorAll(".question-block").forEach(block => {
-                const question = block.querySelector("[data-type='question']").value;
-                const answer = block.querySelector("[data-type='answer']").value;
-                const options = Array.from(block.querySelectorAll("[data-type='option']"))
-                    .map(input => input.value);
-                const imageInput = block.querySelector("[data-type='image']");
-                const file = imageInput?.files[0];
-
-                if (file) formData.append("image", file);
-
-                questionsArray.push({ question, options, answer });
-            });
-
-            formData.append("questions", JSON.stringify(questionsArray));
-
-            const res = await fetch("/api/quiz/question", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                method: "POST",
-                body: formData
-            });
-
-            if (res.ok) {
-                alert("Questions ajoutées !");
-                e.target.reset();
-                container.innerHTML = "";
-                questionIndex = 0;
+        document.getElementById(inputId).addEventListener("change", function () {
+            const file = this.files[0];
+            const preview = document.getElementById(imgId);
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.classList.remove("hidden");
             } else {
-                const errorText = await res.text();
-                alert("Erreur lors de la création des questions :\n" + errorText);
-                console.error("Erreur serveur:", errorText);
+                preview.classList.add("hidden");
+                preview.src = "";
             }
         });
 
-        document.getElementById("logoutBtn").addEventListener("click", async () => {
-            try {
-                const res = await fetch("/api/logout", {
-                    method: "POST",
-                    credentials: "include" // au cas où tu utilises des cookies
-                });
+        questionIndex++;
+    });
 
-                // Supprimer le token local côté client
-                localStorage.removeItem("jwt");
+    // Supprimer la dernière question
+    document.getElementById("removeQuestionBtn").addEventListener("click", () => {
+        if (questionIndex > 0) {
+            container.lastElementChild.remove();
+            questionIndex--;
+        } else {
+            alert("Aucune question à supprimer.");
+        }
+    });
 
-                // Redirige vers la page de login
-                window.location.href = "/";
-            } catch (err) {
-                alert("Erreur lors de la déconnexion");
-                console.error(err);
-            }
+    document.getElementById("questionForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData();
+        const categoryId = document.querySelector("[name='categoryId']").value;
+        const subThemeTitle = document.querySelector("[name='subThemeTitle']").value;
+
+        formData.append("categoryId", categoryId);
+        formData.append("subThemeTitle", subThemeTitle);
+
+        const questionsArray = [];
+        document.querySelectorAll(".question-block").forEach(block => {
+            const question = block.querySelector("[data-type='question']").value;
+            const answer = block.querySelector("[data-type='answer']").value;
+            const options = Array.from(block.querySelectorAll("[data-type='option']")).map(input => input.value);
+            const imageInput = block.querySelector("[data-type='image']");
+            const file = imageInput?.files[0];
+
+            if (file) formData.append("image", file);
+
+            questionsArray.push({ question, options, answer });
         });
 
+        formData.append("questions", JSON.stringify(questionsArray));
 
+        const res = await fetch("/api/quiz/question", {
+            headers: { Authorization: `Bearer ${token}` },
+            method: "POST",
+            body: formData
+        });
 
-    </script>
+        if (res.ok) {
+            alert("Questions ajoutées !");
+            e.target.reset();
+            container.innerHTML = "";
+            questionIndex = 0;
+        } else {
+            const errorText = await res.text();
+            alert("Erreur lors de la création des questions :\n" + errorText);
+            console.error("Erreur serveur:", errorText);
+        }
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+        try {
+            await fetch("/api/logout", { method: "POST", credentials: "include" });
+            localStorage.removeItem("jwt");
+            window.location.href = "/";
+        } catch (err) {
+            alert("Erreur lors de la déconnexion");
+            console.error(err);
+        }
+    });
+</script>
 </body>
 
 </html>
