@@ -40,12 +40,12 @@ async function updateUserScore(userId, pointsToAdd) {
 
     if (!user) return;
 
-    // Calcul du nouveau score sans descendre en dessous de 0
+    // Calcul du nouveau score (jamais négatif)
     const newScore = Math.max(0, user.score + pointsToAdd);
 
     await UserModel.findByIdAndUpdate(
       userId,
-      { $inc: { score: pointsToAdd } }, // incrémente directement
+      { score: newScore }, // incrémente directement
       { new: true }
     );
   } catch (err) {

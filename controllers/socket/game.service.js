@@ -322,7 +322,6 @@ async function sendNextQuestion(io, roomId) {
   const roomState = gameStateByRoom[roomId];
   if (!roomState) return;
 
-  // 💥 On annule tout ancien timer, au cas où
   if (roomState.timeoutId) {
     clearTimeout(roomState.timeoutId);
     roomState.timeoutId = null;
@@ -335,57 +334,57 @@ async function sendNextQuestion(io, roomId) {
 
   if (index >= quiz.subTheme.questions.length) {
     const finalScores = activeGames[roomId].scores;
+    const isSolo = Object.keys(roomState.players).length === 1;
 
-    const isSolo = Object.keys(gameStateByRoom[roomId].players).length === 1;
-
-    io.to(roomId).emit(
-      "game_over",
-      isSolo
-        ? {
-          score: finalScores[Object.keys(finalScores)[0]],
-          totalQuestions: quiz.subTheme.questions.length,
-          message: "Fin de la partie solo",
-        }
-        : {
-          scores: finalScores,
-          totalQuestions: quiz.subTheme.questions.length,
-          message: "Fin de la partie versus",
-        }
-    );
-    // mise à jour des scores en base**
     if (!isSolo) {
-      // Récupère les données des deux joueurs (id et username)
-      const playersData = Object.values(roomState.players);
-      const [player1, player2] = playersData;
-      const id1 = player1._id,
-        id2 = player2._id;
+      // Récupère les joueurs
+      const [player1, player2] = Object.values(roomState.players);
+      const id1 = player1._id;
+      const id2 = player2._id;
       const score1 = finalScores[player1.username];
       const score2 = finalScores[player2.username];
 
+      let gains = {};
+
       if (score1 > score2) {
-        updateUserScore(id1, 10); // +10 au gagnant
-        updateUserScore(id2, -10); // -10 au perdant
+        await updateUserScore(id1, 10);
+        await updateUserScore(id2, -10);
+        gains[player1.username] = 10;
+        gains[player2.username] = -10;
       } else if (score2 > score1) {
-        updateUserScore(id2, 10);
-        updateUserScore(id1, -10);
+        await updateUserScore(id2, 10);
+        await updateUserScore(id1, -10);
+        gains[player1.username] = -10;
+        gains[player2.username] = 10;
       } else {
-        // Égalité : +5 pour les deux
-        updateUserScore(id1, 5);
-        updateUserScore(id2, 5);
+        await updateUserScore(id1, 5);
+        await updateUserScore(id2, 5);
+        gains[player1.username] = 5;
+        gains[player2.username] = 5;
       }
+
+      io.to(roomId).emit("game_over", {
+        scores: finalScores,
+        totalQuestions: quiz.subTheme.questions.length,
+        message: "Fin de la partie versus",
+        gains,
+      });
+    } else {
+      io.to(roomId).emit("game_over", {
+        score: finalScores[Object.keys(finalScores)[0]],
+        totalQuestions: quiz.subTheme.questions.length,
+        message: "Fin de la partie solo",
+      });
     }
 
     clearTimeout(roomState.timeoutId);
     delete gameStateByRoom[roomId];
     delete activeGames[roomId];
-
     return;
   }
 
-  // Réinitialiser le statut des joueurs
-  Object.keys(roomState.players).forEach((id) => {
-    roomState.players[id].answered = false;
-  });
+  // Réinitialisation joueurs
+  Object.values(roomState.players).forEach((p) => (p.answered = false));
 
   const fullQuestion = quiz.subTheme.questions[index];
   io.to(roomId).emit("new_question", {
